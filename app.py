@@ -10,8 +10,13 @@ st.title("🎥 Video Frame Selector")
 # --- Helper functions ---
 def save_temp_video(uploaded_video):
     """Save uploaded video once and return path."""
+    # Define the 'tmp' directory path within the project
+    project_dir = os.path.abspath(os.path.dirname(__file__))
+    tmp_dir = os.path.join(project_dir, "tmp")
+    # Create the 'tmp' directory if it doesn't exist
+    os.makedirs(tmp_dir, exist_ok=True)
     # Use a consistent name to avoid re-uploading the same file
-    temp_path = os.path.join(tempfile.gettempdir(), uploaded_video.name)
+    temp_path = os.path.join(tmp_dir, uploaded_video.name)
     with open(temp_path, "wb") as f:
         f.write(uploaded_video.read())
     return temp_path
