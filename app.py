@@ -3,7 +3,7 @@ import cv2
 import tempfile
 import numpy as np
 import os
-from CV.extract_frames import read_all_pixels, extract_frames
+from Module00Frontend.extract_frames import read_all_pixels, extract_frames
 
 st.title("🎥 Video Frame Selector")
 

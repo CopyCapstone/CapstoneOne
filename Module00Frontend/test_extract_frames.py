@@ -1,4 +1,4 @@
-from CV.extract_frames import read_all_pixels, extract_frames
+from extract_frames import read_all_pixels, extract_frames
 
 if __name__ == "__main__":
     video_path = "video/sample_video.mp4"
