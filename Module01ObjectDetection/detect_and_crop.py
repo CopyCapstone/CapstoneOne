@@ -1,3 +1,4 @@
+import sys
 import cv2
 import os
 from ultralytics import YOLOWorld
@@ -9,8 +10,23 @@ model.set_classes(["rectangle", "plate", "object"]) #prompt
 # image_path: path to input image
 # output_dir: directory to save cropped images
 
-def detect_and_crop(image_path, output_dir, padding):
-    image = cv2.imread(image_path)
+def detect_and_crop(image_path, output_dir, padding = 0):
+    # check image and model loading
+    try:   
+        image = cv2.imread(image_path)
+        if image is None:
+            raise FileNotFoundError(f"Cannot load image: {image_path}")
+    except Exception as e:
+        print(f"Error loading image: {e}")
+        sys.exit() # Exit the script if image cannot be loaded
+    
+    try:   
+        if model is None:
+            raise FileNotFoundError(f"Cannot load model")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        sys.exit() # Exit the script if model cannot be loaded
+
     results = model.predict(image, conf=0.0008, iou=0.45, max_det=1)
     # #imgsz(int) = size of image for detection
     # #iou(double) = intersection over union threshold
@@ -40,4 +56,4 @@ def detect_and_crop(image_path, output_dir, padding):
     return image
 
 # Example usage
-detect_and_crop("Module01ObjectDetection/images/input0.jpg","Module01ObjectDetection/cropped_objects",0)
+detect_and_crop("Module01ObjectDetection/images/input1.jpg","Module01ObjectDetection/cropped_objects")
