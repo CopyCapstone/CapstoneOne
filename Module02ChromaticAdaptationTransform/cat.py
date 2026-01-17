@@ -2,29 +2,20 @@ import cv2
 from pathlib import Path
 import numpy as np
 
-image = f"{Path(__file__).parent}/test.png"
+image = f"{Path(__file__).parent}/test2.png"
 
 data = cv2.imread(image)
 
-data_b = data.copy()
-data_b[..., [1, 2]] = 0
+mean_bgr = data.mean((0,1))
+mean_abs = mean_bgr.mean()
+print(mean_bgr)
+print(mean_abs)
 
-data_g = data.copy()
-data_g[..., [0, 2]] = 0
+data_cat = (data * (mean_abs / mean_bgr)).clip(0, 255).astype(np.uint8)
+print(mean_abs / mean_bgr)
 
-data_r = data.copy()
-data_r[..., [0, 1]] = 0
-
-cv2.imshow("image", data)
+# print(cat_image)
+cv2.imshow("cat", data)
 cv2.waitKey()
-
-cv2.imshow("image", data_b)
+cv2.imshow("cat", data_cat)
 cv2.waitKey()
-
-cv2.imshow("image", data_g)
-cv2.waitKey()
-
-cv2.imshow("image", data_r)
-cv2.waitKey()
-
-cv2.destroyWindow("image")
