@@ -14,8 +14,20 @@ print(mean_abs)
 data_cat = (data * (mean_abs / mean_bgr)).round().clip(0, 255).astype(np.uint8)
 print(mean_abs / mean_bgr)
 
-# print(cat_image)
-cv2.imshow("cat", data)
-cv2.waitKey()
-cv2.imshow("cat", data_cat)
-cv2.waitKey()
+winname = "cat viewer"
+cv2.imshow("cat viewer", data)
+cv2.setWindowTitle(winname, "cat viewer [pre-cat] [q to quit, 1 - 3 to change image]")
+while True:
+    key = chr(cv2.waitKeyEx())
+    match key:
+        case 'q':
+            break
+        case '1':
+            cv2.imshow(winname, data)
+            cv2.setWindowTitle(winname, "cat viewer [pre-cat]")
+        case '2':
+            cv2.imshow(winname, data_cat)
+            cv2.setWindowTitle(winname, "cat viewer [post-cat]")
+        case '3':
+            cv2.imshow(winname, ((data.astype(np.int16) - data_cat.astype(np.int16)) / 2 + 128).round().astype(np.uint8))
+            cv2.setWindowTitle(winname, "cat viewer [diff]")
