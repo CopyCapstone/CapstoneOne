@@ -13,6 +13,8 @@ image = args.image_path
 data_raw = cv2.imread(image)
 data_cat = chromatic_adaptation_transform(image)
 
+print("[q]quit\n[1]pre-cat [2]post-cat [3]diff\n[4]red pre-cat [5]red post-cat\n[6]green pre-cat [7]green post-cat\n[8]blue pre-cat [9]blue post-cat")
+
 winname = "cat viewer"
 cv2.imshow("cat viewer", data_raw)
 cv2.setWindowTitle(winname, "cat viewer [pre-cat] [q to quit, 1 - 9 to change image]")
