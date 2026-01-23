@@ -35,8 +35,9 @@ while True:
             cv2.imshow(winname, data_cat)
             cv2.setWindowTitle(winname, "cat viewer [post-cat]")
         case '3':
+            rgb_diff = (data_raw.mean((0,1)) - data_cat.mean((0,1))).round(2)
             cv2.imshow(winname, ((data_raw.astype(np.int16) - data_cat.astype(np.int16)) / 2 + 128).round().astype(np.uint8))
-            cv2.setWindowTitle(winname, "cat viewer [diff-cat]")
+            cv2.setWindowTitle(winname, "cat viewer [diff-cat] [r. {:+0.2f} g. {:+0.2f} b. {:+0.2f}]".format(*np.flip(rgb_diff)))
         case '4':
             temp = np.zeros(data_raw.shape, np.uint8)
             temp[:, :, 2] = data_raw[:, :, 2]
