@@ -10,7 +10,7 @@ model.set_classes(["rectangle", "plate", "object"]) #prompt
 # image_path: path to input image
 # output_dir: directory to save cropped images
 
-def detect_and_crop(image_path, output_dir, padding = 0):
+def detect_and_crop(image_path, padding = 0,ext = '.jpg'):
     # check image and model loading
     try:   
         image = cv2.imread(image_path)
@@ -27,13 +27,16 @@ def detect_and_crop(image_path, output_dir, padding = 0):
         print(f"Error loading model: {e}")
         sys.exit() # Exit the script if model cannot be loaded
 
+    # imgsz(int) = size of image for detection
+    # iou(double) = intersection over union threshold
+    # max_det(int) = maximum number of detections per image
     results = model.predict(image, conf=0.0008, iou=0.45, max_det=1)
-    # #imgsz(int) = size of image for detection
-    # #iou(double) = intersection over union threshold
-    # #max_det(int) = maximum number of detections per image
-
-    os.makedirs(output_dir, exist_ok=True)
+    
+    #debug: create directory for cropped images
+    os.makedirs("Module01ObjectDetection/cropped_objects", exist_ok=True)
+    
     img_h, img_w, _ = image.shape
+    output_buffers = []
 
     for i, result in enumerate(results):
         for j, box in enumerate(result.boxes):
@@ -44,16 +47,20 @@ def detect_and_crop(image_path, output_dir, padding = 0):
             nx2 = min(img_w, x2 + padding)
             ny2 = min(img_h, y2 + padding)
 
-            cropped_img = image[ny1:ny2, nx1:nx2]
+            cropped  = image[ny1:ny2, nx1:nx2]
 
-            file_name = f"{output_dir}/object_{i}_{j}_from_{os.path.basename(image_path)}"
-            
-            #Create image file
-            cv2.imwrite(file_name, cropped_img) 
+            success, buf = cv2.imencode(ext, cropped)
+            if success:
+                output_buffers.append(buf.tobytes())
+
+            #debug: save cropped images to files
+            file_name = f"Module01ObjectDetection/cropped_objects/object_{i}_{j}_from_{os.path.basename(image_path)}"
+            # Create image file
+            cv2.imwrite(file_name, cropped) 
             print(f"Saved: {file_name}")
             cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    return image
+    return output_buffers
 
 # Example usage
-detect_and_crop("Module01ObjectDetection/images/input1.jpg","Module01ObjectDetection/cropped_objects")
+detect_and_crop("Module01ObjectDetection/images/input1.jpg", padding=0)
