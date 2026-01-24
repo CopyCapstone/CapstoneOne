@@ -6,12 +6,14 @@ from cat import chromatic_adaptation_transform
 parser = argparse.ArgumentParser()
 
 parser.add_argument("image_path")
+parser.add_argument("-m", "--method", default="grey_world", required=False)
+parser.add_argument("-o", "--options", nargs="*", default=None, required=False)
 
 args = parser.parse_args()
 image = args.image_path
 
 data_raw = cv2.imread(image)
-data_cat = chromatic_adaptation_transform(image)
+data_cat = chromatic_adaptation_transform(image, args.method, args.options)
 
 print("[q]quit\n[1]pre-cat [2]post-cat [3]diff\n[4]red pre-cat [5]red post-cat\n[6]green pre-cat [7]green post-cat\n[8]blue pre-cat [9]blue post-cat")
 
