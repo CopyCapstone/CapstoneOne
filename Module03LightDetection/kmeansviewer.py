@@ -8,12 +8,13 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("image_path")
 parser.add_argument("-t", "--threshold", default=0.2, required=False)
+parser.add_argument("-i", "--iterations", default=1, required=False)
 
 args = parser.parse_args()
 image = args.image_path
 
 data_raw = cv2.imread(image)
-centroids, labels = kmeans(image, float(args.threshold))
+centroids, labels = kmeans(image, float(args.threshold), int(args.iterations))
 gloss_percent, gloss_label = detect_gloss(centroids, labels)
 
 print("[q]quit\n[1]raw [2]centroid [3]gloss")
@@ -41,5 +42,5 @@ while True:
             temp = np.zeros((data_raw.shape), np.uint8)
             temp[np.nonzero(labels == gloss_label)] = [255, 255, 255]
             cv2.imshow(winname, temp)
-            cv2.setWindowTitle(winname, "kmeans viewer [gloss] [gls. {:0.2f}%]".format(gloss_percent * 100))
+            cv2.setWindowTitle(winname, "kmeans viewer [gloss] [tot. {:0.2f}%]".format(gloss_percent * 100))
 cv2.destroyAllWindows()
