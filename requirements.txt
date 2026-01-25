@@ -3,3 +3,5 @@ streamlit
 numpy
 ultralytics
 scikit-learn
+colour-science
+scikit-image
