@@ -54,7 +54,8 @@ def update_frame_num():
     st.session_state.stored_frame_num = st.session_state.slider_frame
 
 # --- Upload section ---
-uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"])
+st.sidebar.header("Video Input")
+uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported formats: MP4, MOV, AVI (Max 200 MB)")
 if uploaded_video:
     new_video_path = save_temp_video(uploaded_video)
     # Check if this is a NEW video
@@ -74,16 +75,20 @@ if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     total_frames, fps, duration = get_video_info(video_path)
 
     if total_frames > 0:
+        st.sidebar.subheader("Video Preview")
         st.sidebar.video(video_path)
+        st.sidebar.subheader("Video Information")
         st.sidebar.write(f"Duration: {duration:.2f}s ({total_frames} frames @ {fps:.1f} FPS)")
 
         # Frame selection slider
+        st.sidebar.header("Frame Selection")
         st.slider(
             "Frame Number",
             0, total_frames - 1,
             value=st.session_state.stored_frame_num,
             key="slider_frame", # The key to access the slider's value in state
-            on_change=update_frame_num # The callback function
+            on_change=update_frame_num, # The callback function
+            help="Choose a specific frame from the uploaded video for object detection"
         )
         # The 'stored_frame_num' is now always up-to-date
         frame_num = st.session_state.stored_frame_num
