@@ -74,3 +74,4 @@ def detect_and_crop(image_path, pad_x_pct=0.0, pad_y_pct=0.0, ext = '.jpg'):
 
 # Example usage
 # detect_and_crop("Module_01_ObjectDetection/images/input1.jpg", padding=0)
+
