@@ -110,7 +110,7 @@ if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     cap.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.stored_frame_num)
     success, frame_bgr = cap.read()  
     if success:
-        col1, col2 = st.columns([0.7, 0.3])
+        col1, col2 = st.columns([0.75, 0.25])
         with col1:
             st.markdown(f"### 🖼️ Original Frame {st.session_state.stored_frame_num}")
             frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
