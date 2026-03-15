@@ -102,7 +102,6 @@ with st.sidebar:
             with st.expander("⚙️ Detection Settings", expanded=False):
                 # ปุ่ม Reset to Default
                 st.button("Reset to Default", on_click=reset_detection_params, use_container_width=True)
-                # Slider สำหรับตั้งค่าต่างๆ
                 pad_x = st.slider("Padding X", -0.45, 0.45, key="pad_x_slider", step=0.01)
                 pad_y = st.slider("Padding Y", -0.45, 0.45, key="pad_y_slider", step=0.01)
                 shrink_val = st.slider("Final Shrink", 0.0, 0.45, key="shrink_slider", step=0.01)
