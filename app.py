@@ -1,38 +1,39 @@
 import streamlit as st
 import cv2
 import os
-from Module_00_Frontend.extract_frames import extract_frames
-from Module_00_Frontend.read_all_pixels import read_all_pixels
-from Module_01_ObjectDetection.detect_and_crop import detect_and_crop 
+import numpy as np
+from pathlib import Path
+from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
 
-# --- Page configuration ---
-st.title("Module 1: Object Detection")
-                   
-# --- Helper functions ---
-def save_temp_video(uploaded_video):
-    """Save uploaded video once and return path."""
-    project_dir = os.path.abspath(os.path.dirname(__file__))
-    tmp_dir = os.path.join(project_dir, "tmp/uploaded_video")
-    os.makedirs(tmp_dir, exist_ok=True)
-    temp_path = os.path.join(tmp_dir, f"uploaded_video.mp4")
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_video.read())
-    return temp_path
+# --- Configuration & Paths ---
+st.set_page_config(page_title="Capstone Project", layout="wide")
+PROJECT_ROOT = Path(__file__).parent
+TMP_DIR = PROJECT_ROOT / "tmp"
+
+# --- Save Temp Video functions ---
+def save_temp_video(uploaded_file):
+    """บันทึกไฟล์วิดีโอลงเครื่องและคืนค่า Path ของไฟล์"""
+    video_dir = TMP_DIR / "uploaded_video"
+    video_dir.mkdir(parents=True, exist_ok=True)
+    file_path = video_dir / "uploaded_video.mp4"
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    return str(file_path)
+
 @st.cache_resource
 def get_video_capture(video_path):
-    """Cache cv2.VideoCapture object for performance."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         st.error(f"Cannot open video: {video_path}")
         return None
     return cap
-@st.cache_data # Cache the return value (metadata)
+@st.cache_data
 def get_video_info(video_path):
-    """Precompute metadata only once."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         return 0, 0, 0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    total_frames = total_frames -2
     fps = cap.get(cv2.CAP_PROP_FPS)
     duration = total_frames / fps if fps > 0 else 0
     cap.release()
@@ -45,86 +46,98 @@ if "stored_frame_num" not in st.session_state:
     st.session_state.stored_frame_num = 0
     
 # --- Callback to update frame number ---
-def update_frame_num():
+def update_frameNum_for_slider():
     """
     Called when the slider changes.
     This updates the session state *before* the script reruns.
     'slider_frame' is the key of the st.slider widget.
     """
     st.session_state.stored_frame_num = st.session_state.slider_frame
-
-# --- Upload section ---
-st.sidebar.header("Video Input")
-uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported formats: MP4, MOV, AVI (Max 200 MB)")
-if uploaded_video:
-    new_video_path = save_temp_video(uploaded_video)
-    # Check if this is a NEW video
-    if new_video_path != st.session_state.video_path:
-        st.session_state.video_path = new_video_path
-        st.session_state.stored_frame_num = 0 # Reset frame for new video
-        # Clear caches for the new video
-        get_video_capture.clear()
-        get_video_info.clear()
-    st.sidebar.success(f"Video loaded: {uploaded_video.name}")
-
-# --- Video processing ---
-if st.session_state.video_path and os.path.exists(st.session_state.video_path):
-    video_path = st.session_state.video_path
+    st.session_state.update({"frame_input": st.session_state.slider_frame})
     
-    # Load metadata
-    total_frames, fps, duration = get_video_info(video_path)
-
-    if total_frames > 0:
-        st.sidebar.subheader("Video Preview")
-        st.sidebar.video(video_path)
-        st.sidebar.subheader("Video Information")
-        st.sidebar.write(f"Duration: {duration:.2f}s ({total_frames} frames @ {fps:.1f} FPS)")
-
-        # Frame selection slider
-        st.sidebar.header("Frame Selection")
-        st.slider(
-            "Frame Number",
-            0, total_frames - 1,
-            value=st.session_state.stored_frame_num,
-            key="slider_frame", # The key to access the slider's value in state
-            on_change=update_frame_num, # The callback function
-            help="Choose a specific frame from the uploaded video for object detection"
-        )
-        # The 'stored_frame_num' is now always up-to-date
-        frame_num = st.session_state.stored_frame_num
-
-        # --- Efficient frame reading ---
-        cap = get_video_capture(video_path)
-        if cap:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
-            success, frame_bgr = cap.read()
-            if success:
-                # 1. แสดงรูปต้นฉบับ (แปลงเป็น RGB สำหรับ Streamlit)
-                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-                st.image(frame_rgb, caption=f"Frame {frame_num}")
-
-                # 2. บันทึกเฟรมปัจจุบันเป็นไฟล์ชั่วคราว เพื่อส่ง Path ให้ detect_and_crop
-                temp_frame_path = os.path.join("tmp/current_frames", f"frame_{frame_num}.jpg")
-                os.makedirs("tmp/current_frames", exist_ok=True)
-                cv2.imwrite(temp_frame_path, frame_bgr) # บันทึกเป็น BGR ตามมาตรฐาน OpenCV
-
-                # 3. เรียกใช้ฟังก์ชันโดยส่ง Path เข้าไป
-                # ฟังก์ชันจะส่งคืน list ของ bytes ของรูปที่ crop แล้ว
-                cropped_images_bytes = detect_and_crop(temp_frame_path, pad_x_pct=0.1, pad_y_pct=0.1)
-
-                # 4. แสดงผลรูปที่ถูก Crop
-                if cropped_images_bytes:
-                    cols = st.columns(len(cropped_images_bytes))
-                    for idx, img_bytes in enumerate(cropped_images_bytes):
-                        with cols[idx]:
-                            st.image(img_bytes, caption=f"Object {idx+1}")
-                else:
-                    st.info("🔍 No objects detected in this frame.")
+def reset_detection_params():
+    st.session_state.pad_x_slider = -0.1
+    st.session_state.pad_y_slider = -0.05
+    st.session_state.shrink_slider = 0.2
+    
+# --- Sidebar UI Upload section ---
+total_frames, fps, duration = 0, 0, 0 # Default values in case no video is loaded
+with st.sidebar:
+    st.header("📽️ Video Input")
+    uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported formats: MP4, MOV, AVI (Max 200 MB)")
+    if uploaded_video:
+        new_video_path = save_temp_video(uploaded_video)
+        # Check if this is a NEW video
+        if new_video_path != st.session_state.video_path:
+            st.session_state.video_path = new_video_path
+            st.session_state.stored_frame_num = 0 # Reset frame for new video
+            # Clear caches for the new video
+            get_video_capture.clear()
+            get_video_info.clear()
+        total_frames, fps, duration = get_video_info(st.session_state.video_path)
+        if total_frames > 0:
+            st.divider()
+            st.markdown(f"Info: {duration:.2f}s | {total_frames} frames")
+            col_f1, col_f2 = st.columns([0.7, 0.3])
+            with col_f1:
+                st.slider(
+                    "Select Frame", 0, total_frames,
+                    key="slider_frame",
+                    on_change=update_frameNum_for_slider,
+                )
+            with col_f2:
+                st.number_input(
+                    "Frame", 0, total_frames,
+                    key="frame_input",
+                    value=st.session_state.stored_frame_num,
+                    on_change=lambda: st.session_state.update({"stored_frame_num": st.session_state.frame_input, "slider_frame": st.session_state.frame_input})
+                )
+            with st.expander("⚙️ Detection Settings", expanded=False):
+                # ปุ่ม Reset to Default
+                st.button("Reset to Default", on_click=reset_detection_params, use_container_width=True)
+                # Slider สำหรับตั้งค่าต่างๆ
+                pad_x = st.slider("Padding X", -0.5, 0.5, key="pad_x_slider", step=0.01)
+                pad_y = st.slider("Padding Y", -0.5, 0.5, key="pad_y_slider", step=0.01)
+                shrink_val = st.slider("Final Shrink", 0.0, 0.5, key="shrink_slider", step=0.01)
+                # ตรวจสอบค่าเริ่มต้น (Initialize) ป้องกัน Error กรณีเปิดแอปครั้งแรก
+                if "pad_x_slider" not in st.session_state:
+                    reset_detection_params()
+                        
+# --- Main Display Area ---
+st.title("🔍 Module 1: Object Detection")
+if st.session_state.video_path and os.path.exists(st.session_state.video_path):
+    cap = get_video_capture(st.session_state.video_path)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.stored_frame_num)
+    success, frame_bgr = cap.read()  
+    if success:
+        col1, col2 = st.columns([0.7, 0.3])
+        with col1:
+            st.markdown(f"### 🖼️ Original Frame {st.session_state.stored_frame_num}")
+            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+            st.image(frame_rgb, width='stretch')
+            # --- Debug Section (Optional) ---
+            debug_dir = TMP_DIR / "video_frames"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            debug_path = debug_dir / f"frame_{st.session_state.stored_frame_num}.jpg"
+            cv2.imwrite(str(debug_path), frame_bgr)
+        with col2:
+            st.markdown(f"### 🎯 Detected Frame {st.session_state.stored_frame_num}")
+            cropped_result = detect_rotate_crop(
+                frame_bgr, 
+                pad_x_pct=pad_x, 
+                pad_y_pct=pad_y, 
+                shrink=shrink_val)
+            if cropped_result is not None:
+                result_rgb = cv2.cvtColor(cropped_result, cv2.COLOR_BGR2RGB)
+                st.image(result_rgb, width='stretch')
+                # --- Debug Section (Optional) ---
+                debug_dir = TMP_DIR / "cropped_frames"
+                debug_dir.mkdir(parents=True, exist_ok=True)
+                debug_path = debug_dir / f"cropped_frames_{st.session_state.stored_frame_num}.jpg"
+                cv2.imwrite(str(debug_path), cropped_result)
             else:
-                st.error("⚠️ Could not read this frame. Try another one.")
-        else:
-            st.error("⚠️ Video capture object is not available.")
+                st.warning("No object detected in this frame.")
     else:
-        st.error("⚠️ Could not process video. It may be corrupt or have 0 frames.")
+        st.error("Failed to read the selected frame.")
 else:
-    st.info("👈 Please upload a video file to begin.")
+    st.info("👈 Please upload a video from the sidebar to begin.")
