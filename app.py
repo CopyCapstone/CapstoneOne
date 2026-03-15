@@ -27,6 +27,7 @@ def get_video_capture(video_path):
         st.error(f"Cannot open video: {video_path}")
         return None
     return cap
+
 @st.cache_data
 def get_video_info(video_path):
     cap = cv2.VideoCapture(video_path)
@@ -39,12 +40,6 @@ def get_video_info(video_path):
     cap.release()
     return total_frames, fps, duration
 
-# --- Initialize session state ---
-if "video_path" not in st.session_state:
-    st.session_state.video_path = None
-if "stored_frame_num" not in st.session_state:
-    st.session_state.stored_frame_num = 0
-    
 # --- Callback to update frame number ---
 def update_frameNum_for_slider():
     """
@@ -59,6 +54,16 @@ def reset_detection_params():
     st.session_state.pad_x_slider = -0.1
     st.session_state.pad_y_slider = -0.05
     st.session_state.shrink_slider = 0.2
+    
+# --- Initialize session state ---
+if "video_path" not in st.session_state:
+    st.session_state.video_path = None
+if "stored_frame_num" not in st.session_state:
+    st.session_state.stored_frame_num = 0
+if "pad_x_slider" not in st.session_state:
+    reset_detection_params()
+if "frame_input" not in st.session_state:
+    st.session_state.frame_input = 0
     
 # --- Sidebar UI Upload section ---
 total_frames, fps, duration = 0, 0, 0 # Default values in case no video is loaded
@@ -89,20 +94,19 @@ with st.sidebar:
                 st.number_input(
                     "Frame", 0, total_frames,
                     key="frame_input",
-                    value=st.session_state.stored_frame_num,
-                    on_change=lambda: st.session_state.update({"stored_frame_num": st.session_state.frame_input, "slider_frame": st.session_state.frame_input})
+                    on_change=lambda: st.session_state.update({
+                        "stored_frame_num": st.session_state.frame_input, 
+                        "slider_frame": st.session_state.frame_input
+                    })
                 )
             with st.expander("⚙️ Detection Settings", expanded=False):
                 # ปุ่ม Reset to Default
                 st.button("Reset to Default", on_click=reset_detection_params, use_container_width=True)
                 # Slider สำหรับตั้งค่าต่างๆ
-                pad_x = st.slider("Padding X", -0.5, 0.5, key="pad_x_slider", step=0.01)
-                pad_y = st.slider("Padding Y", -0.5, 0.5, key="pad_y_slider", step=0.01)
-                shrink_val = st.slider("Final Shrink", 0.0, 0.5, key="shrink_slider", step=0.01)
-                # ตรวจสอบค่าเริ่มต้น (Initialize) ป้องกัน Error กรณีเปิดแอปครั้งแรก
-                if "pad_x_slider" not in st.session_state:
-                    reset_detection_params()
-                        
+                pad_x = st.slider("Padding X", -0.45, 0.45, key="pad_x_slider", step=0.01)
+                pad_y = st.slider("Padding Y", -0.45, 0.45, key="pad_y_slider", step=0.01)
+                shrink_val = st.slider("Final Shrink", 0.0, 0.45, key="shrink_slider", step=0.01)
+                
 # --- Main Display Area ---
 st.title("🔍 Module 1: Object Detection")
 if st.session_state.video_path and os.path.exists(st.session_state.video_path):
@@ -110,7 +114,7 @@ if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     cap.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.stored_frame_num)
     success, frame_bgr = cap.read()  
     if success:
-        col1, col2 = st.columns([0.75, 0.25])
+        col1, col2 = st.columns([0.7, 0.3])
         with col1:
             st.markdown(f"### 🖼️ Original Frame {st.session_state.stored_frame_num}")
             frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
