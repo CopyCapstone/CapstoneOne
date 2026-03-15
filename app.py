@@ -125,11 +125,7 @@ if st.session_state.video_path and os.path.exists(st.session_state.video_path):
             cv2.imwrite(str(debug_path), frame_bgr)
         with col2:
             st.markdown(f"### 🎯 Detected Frame {st.session_state.stored_frame_num}")
-            cropped_result = detect_rotate_crop(
-                frame_bgr, 
-                pad_x_pct=pad_x, 
-                pad_y_pct=pad_y, 
-                shrink=shrink_val)
+            cropped_result = detect_rotate_crop(frame_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
             if cropped_result is not None:
                 result_rgb = cv2.cvtColor(cropped_result, cv2.COLOR_BGR2RGB)
                 st.image(result_rgb, width='stretch')
