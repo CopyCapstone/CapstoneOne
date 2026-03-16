@@ -1,181 +1,166 @@
 import streamlit as st
 import cv2
 import os
-from colour.colorimetry import CCS_ILLUMINANTS
-from Module_02_ChromaticAdaptationTransform.cat import chromatic_adaptation_transform
-from Module_02_ChromaticAdaptationTransform.custom_CAT import custom_CAT 
-from skimage.color import rgb2xyz, xyz2rgb
 import numpy as np
+from pathlib import Path
+from skimage.color import rgb2xyz, xyz2rgb
+from colour.colorimetry import CCS_ILLUMINANTS
 
-st.title("Module 2: CAT")
-# ---------------------------------------------------------
-# 1. State Management
-# ---------------------------------------------------------
-# สร้างตัวแปร "ถาวร" (Persistent) สำหรับเก็บค่า Setting
-if "stored_cat_method" not in st.session_state:
-    st.session_state.stored_cat_method = "grey_world"
-if "stored_lower" not in st.session_state:
-    st.session_state.stored_lower = 95
-if "stored_upper" not in st.session_state:
-    st.session_state.stored_upper = 99
-if "stored_light_source" not in st.session_state:
-    st.session_state.stored_light_source = 'D65'
-if "stored_light_target" not in st.session_state:
-    st.session_state.stored_light_target = 'D65'
+from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
+from Module_02_ChromaticAdaptationTransform.cat import chromatic_adaptation_transform
+from Module_02_ChromaticAdaptationTransform.custom_CAT import custom_CAT
 
-# ฟังก์ชัน Callback: เมื่อ Widget เปลี่ยนค่า -> ให้บันทึกลงตัวแปรถาวรทันที
-def update_settings():
-    st.session_state.stored_cat_method = st.session_state.widget_method
-    # เช็คก่อนว่ามี key ของ slider หรือไม่ (กัน error กรณีเลือก grey_world)
-    if "widget_lower" in st.session_state:
-        st.session_state.stored_lower = st.session_state.widget_lower
-    if "widget_upper" in st.session_state:
-        st.session_state.stored_upper = st.session_state.widget_upper
-    if "widget_source" in st.session_state:
-        st.session_state.stored_light_source = st.session_state.widget_source
-    if "widget_target" in st.session_state:
-        st.session_state.stored_light_target = st.session_state.widget_target
-
-# ---------------------------------------------------------
-# 2. Sidebar Controls
-# ---------------------------------------------------------
-st.sidebar.header("Settings")
-# หา Index เริ่มต้นของ Selectbox จากค่าที่บันทึกไว้
-method_options = ["grey_world", "white_patch","custom"]
-try:
-    default_index = method_options.index(st.session_state.stored_cat_method)
-except ValueError:
-    default_index = 0
-
-# Selectbox
-st.sidebar.selectbox(
-    "CAT Method", 
-    method_options, 
-    index=default_index,
-    key="widget_method",
-    on_change=update_settings
-)
-
-# Slider (จะแสดงก็ต่อเมื่อเลือก white_patch)
-if st.session_state.stored_cat_method == "white_patch":
-    st.sidebar.slider(
-        "Lower Percentile", 0, 100, 
-        value=st.session_state.stored_lower,
-        key="widget_lower", 
-        on_change=update_settings
-    )
-    st.sidebar.slider(
-        "Upper Percentile", 0, 100, 
-        value=st.session_state.stored_upper,
-        key="widget_upper", 
-        on_change=update_settings
-    )
-
-# Slider (จะแสดงก็ต่อเมื่อเลือก custom)
-if st.session_state.stored_cat_method == "custom":
-    ILLUMINANTS_xy = CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']
-    illuminant_list = list(ILLUMINANTS_xy.keys())
-
-    # 1. เลือก Source Illuminant (แสงต้นฉบับของรูป)
-    try:
-        idx_src = illuminant_list.index(st.session_state.stored_light_source)
-    except ValueError: idx_src = 0
-    st.sidebar.selectbox(
-        "Source Illuminant (แสงต้นทาง)", 
-        illuminant_list, 
-        index=idx_src,
-        key="widget_source", 
-        on_change=update_settings
-    )
-
-    # 2. เลือก Target Illuminant (แสงที่อยากได้)
-    try:
-        idx_tgt = illuminant_list.index(st.session_state.stored_light_target)
-    except ValueError: idx_tgt = illuminant_list.index('D65') # default D65
-    st.sidebar.selectbox(
-        "Target Illuminant (แสงปลายทาง)", 
-        illuminant_list, 
-        index=idx_tgt,
-        key="widget_target",
-        on_change=update_settings
-    )
-
-
-# ---------------------------------------------------------
-# 3. Image Processing Logic
-# ---------------------------------------------------------
-frame_num = st.session_state.stored_frame_num
-st.subheader(f"Processing Frame: {frame_num}")
-image_dir = "tmp/cropped_objects"
-save_dir = "tmp/CAT_objects"
-os.makedirs("tmp/CAT_objects", exist_ok=True)
-image_filename = f"cropped_frame_{frame_num}.jpg"
-image_path = os.path.join(image_dir, image_filename)
-
-if os.path.exists(image_path):
-    current_method = st.session_state.stored_cat_method
-    current_lower = st.session_state.stored_lower
-    current_upper = st.session_state.stored_upper
-    
-    # โหลดรูปต้นฉบับเพื่อแสดงผลเทียบ
-    img_bgr = cv2.imread(image_path)
-    if current_method == "custom":
+# --- Configuration & Constants ---
+st.set_page_config(page_title="Capstone Project", layout="wide")
+PROJECT_ROOT = Path(__file__).parent.parent
+TMP_DIR = PROJECT_ROOT / "tmp"
+ILLUMINANTS_xy = CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']
+# --- Helper Functions (Logic) ---
+@st.cache_data(show_spinner=False)
+def process_cat_logic(image_path, method, lower, upper, src_light, tgt_light):
+    img_bgr = cv2.imread(str(image_path))
+    if img_bgr is None:
+        return None
+    if method == "custom":
         # 1. เตรียมค่า xy ของแสง
-        xy_src = ILLUMINANTS_xy[st.session_state.stored_light_source]
-        xy_tgt = ILLUMINANTS_xy[st.session_state.stored_light_target]
-
+        xy_src = ILLUMINANTS_xy[src_light]
+        xy_tgt = ILLUMINANTS_xy[tgt_light]
         # 2. แปลง BGR -> RGB -> XYZ (High Precision using skimage)
-        # ขั้นแรกแปลง BGR (OpenCV) เป็น RGB ก่อน
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        
-        # ใช้ skimage แปลง RGB เป็น XYZ
-        # หมายเหตุ: skimage จะปรับค่าจาก uint8 (0-255) เป็น float (0-1) ให้โดยอัตโนมัติ
-        # และจัดการเรื่อง sRGB Gamma linearization ให้ด้วย ทำให้แม่นยำกว่า cv2
         img_xyz = rgb2xyz(img_rgb)
-        
         # 3. เรียกใช้ฟังก์ชัน custom_CAT
         processed_xyz = custom_CAT(img_xyz, xy_src, xy_tgt, method='Von Kries')
-        
         # 4. แปลง XYZ กลับเป็น RGB -> BGR
-        # ใช้ skimage แปลงกลับ (Output เป็น float)
         processed_rgb_float = xyz2rgb(processed_xyz)
-        
-        # สำคัญ! ต้อง Clip ค่าให้อยู่ในช่วง [0, 1] 
-        # เพราะการเปลี่ยน White Point อาจทำให้สีบางสีหลุดออกนอก Gamut (ค่าติดลบ หรือเกิน 1)
         processed_rgb_float = np.clip(processed_rgb_float, 0, 1)
-        
-        # แปลงจาก float (0-1) กลับเป็น uint8 (0-255) เพื่อแสดงผล
         processed_rgb_uint8 = (processed_rgb_float * 255).astype(np.uint8)
-        
-        # แปลงกลับเป็น BGR เพื่อให้ Flow ของโปรแกรมข้างล่างทำงานต่อได้ถูกต้อง
-        processed_bgr = cv2.cvtColor(processed_rgb_uint8, cv2.COLOR_RGB2BGR)
+        return cv2.cvtColor(processed_rgb_uint8, cv2.COLOR_RGB2BGR)
     else:
-        # ใช้ image_path ส่งไปให้ฟังก์ชัน
-        processed_bgr = chromatic_adaptation_transform(
-            image_path, 
-            current_method, 
-            [current_lower, current_upper]
-        )
-
-    # Save image
-    save_path = os.path.join(save_dir, f"CAT_frame_{frame_num}.jpg")
-    cv2.imwrite(save_path, processed_bgr)
+        return chromatic_adaptation_transform(str(image_path), method, [lower, upper])
     
-    if img_bgr is not None and processed_bgr is not None:
-        original_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        processed_rgb = cv2.cvtColor(processed_bgr, cv2.COLOR_BGR2RGB)
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("### Original Crop")
-            st.image(original_rgb, width='stretch')
-        with col2:
-            if current_method == "custom":
-                st.markdown(f"### Result ({st.session_state.stored_light_source} to {st.session_state.stored_light_target})")
-            else:
-                st.markdown(f"### Result ({current_method})")
-            st.image(processed_rgb, width='stretch')
-    else:
-        st.error("Error: Could not decode image.")
+def init_session_state():
+    """รวมการประกาศ Session State """
+    defaults = {
+        "stored_cat_method": "grey_world",
+        "stored_lower": 95,
+        "stored_upper": 99,
+        "stored_light_source": 'D65',
+        "stored_light_target": 'D65',
+        "stored_frame_num": 0
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val     
+# --- UI Components ---  
+def sidebar_controls():
+    st.sidebar.header("🎨 CAT Settings")
+    method_options = ["grey_world", "white_patch", "custom"]
+    
+    st.sidebar.segmented_control(
+        "Correction Method", 
+        options=method_options, 
+        default=st.session_state.stored_cat_method,
+        key="temp_method",
+        on_change=lambda: st.session_state.update({"stored_cat_method": st.session_state.temp_method})
+    )
+    
+    if st.session_state.stored_cat_method == "white_patch":
+        st.session_state.stored_lower = st.sidebar.slider(
+            "Lower Percentile", 0, 100, 
+            value=st.session_state.stored_lower
+        )
+        st.session_state.stored_upper = st.sidebar.slider(
+            "Upper Percentile", 0, 100, 
+            value=st.session_state.stored_upper
+        )
         
-else:
-    st.warning(f"File not found: `{image_path}`")
+    if st.session_state.stored_cat_method == "custom":
+        illuminant_list = list(ILLUMINANTS_xy.keys())
+        src_idx = illuminant_list.index(st.session_state.stored_light_source)
+        tgt_idx = illuminant_list.index(st.session_state.stored_light_target)
+        st.session_state.stored_light_source = st.sidebar.selectbox(
+            "Source (Original)", illuminant_list, 
+            index=src_idx
+        )
+        st.session_state.stored_light_target = st.sidebar.selectbox(
+            "Target (Desired)", illuminant_list, 
+            index=tgt_idx
+        )
+        
+# --- Main Application Execution ---
+def main():
+    st.title("🌓 Module 2: Chromatic Adaptation")
+    st.divider()
+    init_session_state()
+    sidebar_controls()
+    frame_num = st.session_state.stored_frame_num
+    # กำหนด Paths
+    crop_path = TMP_DIR / "cropped_frames" / f"cropped_frame_{frame_num}.jpg"
+    full_path = TMP_DIR / "video_frames" / f"frame_{frame_num}.jpg"
+    save_dir = TMP_DIR / "CAT_frames"
+    save_dir.mkdir(parents=True, exist_ok=True)
+    # ดึงค่า Setting อาจได้ใช้ 
+    m1_pad_x = st.session_state.get("stored_pad_x", -0.1)
+    m1_pad_y = st.session_state.get("stored_pad_y", -0.05)
+    m1_shrink = st.session_state.get("stored_shrink", 0.2)
+    if not full_path.exists():
+        st.warning(f"⚠️ No source frame found for Frame {frame_num}. Please process Module 1 first.")
+        return
+    with st.spinner("✨ Applying Color Adaptation..."):
+        # รัน CAT โดยเลือกวิธีการตามที่ผู้ใช้กำหนด
+        if st.session_state.stored_cat_method == "custom":
+            processed_bgr = process_cat_logic(
+                crop_path, 
+                st.session_state.stored_cat_method,
+                st.session_state.stored_lower,
+                st.session_state.stored_upper,
+                st.session_state.stored_light_source,
+                st.session_state.stored_light_target
+            )        
+        else:
+            processed_full_bgr = process_cat_logic(
+                full_path, 
+                st.session_state.stored_cat_method,
+                st.session_state.stored_lower,
+                st.session_state.stored_upper,
+                None,
+                None
+            )            
+            if processed_full_bgr is not None:
+            # ทำ Object Detection (Crop) โดยใช้ค่าจาก Module 1
+                processed_bgr = detect_rotate_crop(processed_full_bgr, pad_x_pct=m1_pad_x, pad_y_pct=m1_pad_y, shrink=m1_shrink)
+            
+            # ตรวจสอบกรณี Detect ไม่เจอ
+            if processed_bgr is None:
+                st.error("🎯 Detection failed on processed image. Show full frame instead.")
+                processed_bgr = processed_full_bgr
+                
+        # บันทึกผลลัพธ์
+        save_path = save_dir / f"CAT_frame_{frame_num}.jpg"
+        cv2.imwrite(str(save_path), processed_bgr)
+        
+        # Display Results
+        col1, col2 = st.columns(2)
+        
+        # โหลดภาพต้นฉบับมาเทียบ (Crop เดิม)
+        orig_crop = cv2.imread(str(crop_path))
+        with col1:
+            st.subheader(f"🖼️ Original Detection {frame_num}")
+            if orig_crop is not None:
+                st.image(cv2.cvtColor(orig_crop, cv2.COLOR_BGR2RGB), width='stretch')
+            else:
+                st.info("No original crop available.")
+        with col2:
+            method_name = st.session_state.stored_cat_method
+            st.subheader(f"✨ CAT Result ({method_name})")
+            st.image(cv2.cvtColor(processed_bgr, cv2.COLOR_BGR2RGB), width='stretch')
+        with st.expander("ℹ️ Details"):
+            st.write(f"**Method:** {method_name}")
+            if st.session_state.stored_cat_method == "custom":
+                st.write(f"**Method Details:** {st.session_state.stored_light_source} to {st.session_state.stored_light_target}")
+            if method_name == "white_patch":
+                st.write(f"**Percentiles:** Lower={st.session_state.stored_lower}%, Upper={st.session_state.stored_upper}%")
+            st.write(f"**Settings:** {m1_pad_x}, {m1_pad_y}, {m1_shrink}")
+
+if __name__ == "__main__":
+    main()

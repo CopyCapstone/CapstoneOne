@@ -79,20 +79,26 @@ with st.sidebar:
             # Clear caches for the new video
             get_video_capture.clear()
             get_video_info.clear()
+    if st.session_state.video_path:
+        if not uploaded_video:
+            st.success(f"Using loaded video: {os.path.basename(st.session_state.video_path)}")
         total_frames, fps, duration = get_video_info(st.session_state.video_path)
         if total_frames > 0:
             st.divider()
             st.markdown(f"Info: {duration:.2f}s | {total_frames} frames")
             col_f1, col_f2 = st.columns([0.7, 0.3])
+            current_val = st.session_state.stored_frame_num
             with col_f1:
                 st.slider(
                     "Select Frame", 0, total_frames,
+                    value=current_val,
                     key="slider_frame",
                     on_change=update_frameNum_for_slider,
                 )
             with col_f2:
                 st.number_input(
                     "Frame", 0, total_frames,
+                    value=current_val,
                     key="frame_input",
                     on_change=lambda: st.session_state.update({
                         "stored_frame_num": st.session_state.frame_input, 
@@ -102,12 +108,16 @@ with st.sidebar:
             with st.expander("⚙️ Detection Settings", expanded=False):
                 # ปุ่ม Reset to Default
                 st.button("Reset to Default", on_click=reset_detection_params, use_container_width=True)
-                pad_x = st.slider("Padding X", -0.45, 0.45, key="pad_x_slider", step=0.01)
-                pad_y = st.slider("Padding Y", -0.45, 0.45, key="pad_y_slider", step=0.01)
-                shrink_val = st.slider("Final Shrink", 0.0, 0.45, key="shrink_slider", step=0.01)
-                
+                pad_x = st.slider("Padding X", -0.45, 0.45, key="pad_x_slider", step=0.01, value= st.session_state.pad_x_slider)
+                pad_y = st.slider("Padding Y", -0.45, 0.45, key="pad_y_slider", step=0.01, value= st.session_state.pad_y_slider)
+                shrink_val = st.slider("Final Shrink", 0.0, 0.45, key="shrink_slider", step=0.01, value= st.session_state.shrink_slider)
+                st.session_state.stored_pad_x = st.session_state.pad_x_slider
+                st.session_state.stored_pad_y = st.session_state.pad_y_slider
+                st.session_state.stored_shrink = st.session_state.shrink_slider
+
 # --- Main Display Area ---
 st.title("🔍 Module 1: Object Detection")
+st.divider()
 if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     cap = get_video_capture(st.session_state.video_path)
     cap.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.stored_frame_num)
@@ -132,7 +142,7 @@ if st.session_state.video_path and os.path.exists(st.session_state.video_path):
                 # --- Debug Section (Optional) ---
                 debug_dir = TMP_DIR / "cropped_frames"
                 debug_dir.mkdir(parents=True, exist_ok=True)
-                debug_path = debug_dir / f"cropped_frames_{st.session_state.stored_frame_num}.jpg"
+                debug_path = debug_dir / f"cropped_frame_{st.session_state.stored_frame_num}.jpg"
                 cv2.imwrite(str(debug_path), cropped_result)
             else:
                 st.warning("No object detected in this frame.")
