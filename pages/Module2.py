@@ -25,7 +25,7 @@ def process_cat_logic(image_path, method, lower, upper, src_light, tgt_light):
         # 1. เตรียมค่า xy ของแสง
         xy_src = ILLUMINANTS_xy[src_light]
         xy_tgt = ILLUMINANTS_xy[tgt_light]
-        # 2. แปลง BGR -> RGB -> XYZ (High Precision using skimage)
+        # 2. แปลง BGR -> RGB -> XYZ (ใช้ skimage.color)
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         img_xyz = rgb2xyz(img_rgb)
         # 3. เรียกใช้ฟังก์ชัน custom_CAT
