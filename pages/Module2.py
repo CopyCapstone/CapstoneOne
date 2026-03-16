@@ -37,7 +37,6 @@ def process_cat_logic(image_path, method, lower, upper, src_light, tgt_light):
         return cv2.cvtColor(processed_rgb_uint8, cv2.COLOR_RGB2BGR)
     else:
         return chromatic_adaptation_transform(str(image_path), method, [lower, upper])
-    
 def init_session_state():
     """รวมการประกาศ Session State """
     defaults = {
@@ -50,7 +49,8 @@ def init_session_state():
     }
     for key, val in defaults.items():
         if key not in st.session_state:
-            st.session_state[key] = val     
+            st.session_state[key] = val  
+               
 # --- UI Components ---  
 def sidebar_controls():
     st.sidebar.header("🎨 CAT Settings")
