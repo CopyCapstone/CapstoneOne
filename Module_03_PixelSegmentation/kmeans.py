@@ -38,7 +38,7 @@ def kmeans(image, threshold=0.20, iterations=1):
             best["kmeans"] = iteration_kmeans
             best["iteration"] = i + 1
     # we arent using this anymore, so it's safe to overwrite
-    print(f"Using iteration {best["iteration"]} ({best["inertia"]})")
+    print(f'Using iteration {best["iteration"]} ({best["inertia"]})')
     centroids = (best["centroids"] * 255).round().astype(np.uint8)
     print(centroids)
     labels = best["kmeans"].predict(data_flat).reshape(data.shape[0:2])

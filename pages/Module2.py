@@ -16,7 +16,6 @@ PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 ILLUMINANTS_xy = CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']
 # --- Helper Functions (Logic) ---
-@st.cache_data(show_spinner=False)
 def process_cat_logic(image_path, method, lower, upper, src_light, tgt_light):
     img_bgr = cv2.imread(str(image_path))
     if img_bgr is None:
@@ -37,6 +36,7 @@ def process_cat_logic(image_path, method, lower, upper, src_light, tgt_light):
         return cv2.cvtColor(processed_rgb_uint8, cv2.COLOR_RGB2BGR)
     else:
         return chromatic_adaptation_transform(str(image_path), method, [lower, upper])
+    
 def init_session_state():
     """รวมการประกาศ Session State """
     defaults = {
@@ -45,12 +45,11 @@ def init_session_state():
         "stored_upper": 99,
         "stored_light_source": 'D65',
         "stored_light_target": 'D65',
-        "stored_frame_num": 0
     }
     for key, val in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = val  
-               
+                        
 # --- UI Components ---  
 def sidebar_controls():
     st.sidebar.header("🎨 CAT Settings")
@@ -65,14 +64,19 @@ def sidebar_controls():
     )
     
     if st.session_state.stored_cat_method == "white_patch":
+        st.sidebar.subheader("White Patch Defaults : Lower = 95, Upper = 99", width='stretch')
         st.session_state.stored_lower = st.sidebar.slider(
             "Lower Percentile", 0, 100, 
-            value=st.session_state.stored_lower
+            key = "wp_lower_slider",
+            value = st.session_state.stored_lower
         )
         st.session_state.stored_upper = st.sidebar.slider(
             "Upper Percentile", 0, 100, 
-            value=st.session_state.stored_upper
+            key = "wp_upper_slider",
+            value = st.session_state.stored_upper
         )
+        st.session_state.stored_lower = st.session_state.wp_lower_slider
+        st.session_state.stored_upper = st.session_state.wp_upper_slider
         
     if st.session_state.stored_cat_method == "custom":
         illuminant_list = list(ILLUMINANTS_xy.keys())
@@ -100,32 +104,24 @@ def main():
     save_dir = TMP_DIR / "CAT_frames"
     save_dir.mkdir(parents=True, exist_ok=True)
     # ดึงค่า Setting อาจได้ใช้ 
-    m1_pad_x = st.session_state.get("stored_pad_x", -0.1)
-    m1_pad_y = st.session_state.get("stored_pad_y", -0.05)
-    m1_shrink = st.session_state.get("stored_shrink", 0.2)
     if not full_path.exists():
         st.warning(f"⚠️ No source frame found for Frame {frame_num}. Please process Module 1 first.")
         return
     with st.spinner("✨ Applying Color Adaptation..."):
         # รัน CAT โดยเลือกวิธีการตามที่ผู้ใช้กำหนด
+        method = st.session_state.stored_cat_method
+        lower_percentile = st.session_state.get("stored_lower", 95)
+        upper_percentile = st.session_state.get("stored_upper", 99)
+        light_source = st.session_state.get("stored_light_source", None)
+        light_target = st.session_state.get("stored_light_target", None)
+        m1_pad_x = st.session_state.get("stored_pad_x", -0.1)
+        m1_pad_y = st.session_state.get("stored_pad_y", -0.05)
+        m1_shrink = st.session_state.get("stored_shrink", 0.2)
+
         if st.session_state.stored_cat_method == "custom":
-            processed_bgr = process_cat_logic(
-                crop_path, 
-                st.session_state.stored_cat_method,
-                st.session_state.stored_lower,
-                st.session_state.stored_upper,
-                st.session_state.stored_light_source,
-                st.session_state.stored_light_target
-            )        
+            processed_bgr = process_cat_logic(crop_path, method,lower_percentile,upper_percentile,light_source,light_target)        
         else:
-            processed_full_bgr = process_cat_logic(
-                full_path, 
-                st.session_state.stored_cat_method,
-                st.session_state.stored_lower,
-                st.session_state.stored_upper,
-                None,
-                None
-            )            
+            processed_full_bgr = process_cat_logic(full_path, method,lower_percentile,upper_percentile,None,None)            
             if processed_full_bgr is not None:
             # ทำ Object Detection (Crop) โดยใช้ค่าจาก Module 1
                 processed_bgr = detect_rotate_crop(processed_full_bgr, pad_x_pct=m1_pad_x, pad_y_pct=m1_pad_y, shrink=m1_shrink)
@@ -154,13 +150,17 @@ def main():
             method_name = st.session_state.stored_cat_method
             st.subheader(f"✨ CAT Result ({method_name})")
             st.image(cv2.cvtColor(processed_bgr, cv2.COLOR_BGR2RGB), width='stretch')
+            
         with st.expander("ℹ️ Details"):
-            st.write(f"**Method:** {method_name}")
+            st.write(f"Processing Frame: {st.session_state.stored_frame_num}")
+            st.write(f"Object Detection Pad_x: {st.session_state.stored_pad_x}")
+            st.write(f"Object Detection Pad_y: {st.session_state.stored_pad_y}")
+            st.write(f"Object Detection Shrink: {st.session_state.stored_shrink}")
+            st.write(f"Chromatic Adaptation Transform Method: {st.session_state.stored_cat_method}")
             if st.session_state.stored_cat_method == "custom":
-                st.write(f"**Method Details:** {st.session_state.stored_light_source} to {st.session_state.stored_light_target}")
-            if method_name == "white_patch":
-                st.write(f"**Percentiles:** Lower={st.session_state.stored_lower}%, Upper={st.session_state.stored_upper}%")
-            st.write(f"**Settings:** {m1_pad_x}, {m1_pad_y}, {m1_shrink}")
+                st.write(f"Custom CAT: {st.session_state.stored_light_source} to {st.session_state.stored_light_target}")
+            if st.session_state.stored_cat_method == "white_patch":
+                st.write(f"White Patch Percentile Setting: Lower={st.session_state.stored_lower}%, Upper={st.session_state.stored_upper}%")
 
 if __name__ == "__main__":
     main()
