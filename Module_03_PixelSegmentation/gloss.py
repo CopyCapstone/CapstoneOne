@@ -1,4 +1,4 @@
-from kmeans import kmeans
+from .kmeans import kmeans
 import numpy as np
 
 # convenience function
