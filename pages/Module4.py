@@ -88,7 +88,7 @@ if os.path.exists(image_path):
     
     RGB_mean = st.session_state.stored_average_RGB_diffuse 
     
-    st.image(cv2.cvtColor(data_raw, cv2.COLOR_BGR2RGB))
+    st.image(cv2.cvtColor(data_raw, cv2.COLOR_BGR2RGB), caption=f"GlossReplaced_frame_{st.session_state.stored_frame_num}")
     st.metric(label="Gloss Replaced by Mean Diffuse", value=f"RBG: {RGB_mean}")
     # 1. โหลดโมเดล
     try:
@@ -104,7 +104,7 @@ if os.path.exists(image_path):
         pred_L = prediction[0][0] * 100.0
         pred_a = (prediction[0][1] * 240.0) - 120.0
         pred_b = (prediction[0][2] * 240.0) - 120.0
-        st.subheader(f"🤖 AI Prediction Result Lab: L={pred_L:.2f}, a={pred_a:.2f}, b={pred_b:.2f}")
+        st.metric(label=f"AI Prediction Result", value=f"Lab: [{pred_L:.2f} {pred_a:.2f} {pred_b:.2f}]")
         
     except Exception as e:
         st.error(f"Error loading or predicting: {e}")
