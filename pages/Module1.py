@@ -7,7 +7,7 @@ from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
 
 # --- Configuration & Paths ---
 st.set_page_config(page_title="Capstone Project", layout="wide")
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 
 # --- Save Temp Video functions ---
@@ -141,7 +141,7 @@ if st.session_state.video_path and os.path.exists(st.session_state.video_path):
                 cv2.imwrite(str(debug_path), cropped_result)
             else:
                 st.warning("No object detected in this frame.")
-        with st.expander("ℹ️ Details"):
+        with st.expander("ℹ️ Settings Details"):
             st.write(f"Processing Frame: {st.session_state.stored_frame_num}")
             st.write(f"Object Detection Pad_x: {st.session_state.stored_pad_x}")
             st.write(f"Object Detection Pad_y: {st.session_state.stored_pad_y}")

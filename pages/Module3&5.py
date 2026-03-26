@@ -1,4 +1,3 @@
-import json
 import streamlit as st
 import cv2
 import os
@@ -67,15 +66,15 @@ with st.sidebar:
         )
         st.session_state.stored_iterations = st.session_state.input_iterations
 
-image_path = rf"tmp\CAT_frames\CAT_frame_{st.session_state.stored_frame_num}.jpg"
+image_path = TMP_DIR / "CAT_frames" / f"CAT_frame_{st.session_state.stored_frame_num}.jpg"
 
-if os.path.exists(image_path):
+if os.path.exists(str(image_path)):
     # 1. โหลดภาพและประมวลผล
-    data_raw = cv2.imread(image_path)
+    data_raw = cv2.imread(str(image_path))
     h, w, _ = data_raw.shape 
     
     # รัน K-means และค้นหา Gloss
-    centroids, labels = kmeans(image_path, input_threshold, input_iterations)
+    centroids, labels = kmeans(str(image_path), input_threshold, input_iterations)
     gloss_percent, gloss_label = detect_gloss(centroids, labels)
 
     # เตรียม Mask
@@ -107,11 +106,9 @@ if os.path.exists(image_path):
         st.metric(label="The average RGB value of diffuse pixels", value=f"{average_RGB_diffuse}")  
     with col4:
         st.write(f"{create_color_box(average_RGB_diffuse)}", unsafe_allow_html=True)
-
     # --- สร้างรูปที่ 2: บริเวณเฉพาะที่เป็น Gloss (Masked Image) ---
     gloss_only = np.zeros_like(data_raw)
     gloss_only[mask_gloss] = data_raw[mask_gloss]
-
     # --- สร้างรูปที่ 3: แทนที่ Gloss ด้วย Mean ของ Not-Gloss ---
     replaced_img = data_raw.copy()
     if np.any(mask_not_gloss):
@@ -120,8 +117,6 @@ if os.path.exists(image_path):
         replaced_img[mask_gloss] = average_BGR_diffuse
     else:
         st.warning("ไม่สามารถหาค่าเฉลี่ยส่วนอื่นได้เนื่องจากภาพเป็น Gloss ทั้งหมด")
-
-
     # แสดง 3 รูปเรียงกัน (หรือใช้ columns)
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -142,7 +137,7 @@ if os.path.exists(image_path):
         debug_path = debug_dir / f"GlossReplaced_frame_{st.session_state.stored_frame_num}.jpg"
         cv2.imwrite(str(debug_path), replaced_img)
         
-    with st.expander("ℹ️ Details"):
+    with st.expander("ℹ️ Settings Details"):
         st.write(f"Processing Frame: {st.session_state.stored_frame_num}")
         st.write(f"Object Detection Pad_x: {st.session_state.stored_pad_x}")
         st.write(f"Object Detection Pad_y: {st.session_state.stored_pad_y}")
@@ -158,7 +153,6 @@ if os.path.exists(image_path):
         st.write(f"Pixel Segmentation Gloss Percentage: {st.session_state.stored_gloss_percent * 100:.2f}%")
         st.write(f"The average RGB value of specular pixels: {st.session_state.stored_average_RGB_gloss}")
         st.write(f"The average RGB value of diffuse pixels: {st.session_state.stored_average_RGB_diffuse}")
-
     with st.expander("🕵️‍♂️ เจาะลึกค่าสีบริเวณ Gloss"):
         if len(gloss_pixels_rgb) > 0:
             unique_colors = np.unique(gloss_pixels_rgb, axis=0)
@@ -167,38 +161,5 @@ if os.path.exists(image_path):
             st.write(f"ค่าสี RGB ของพิกเซล Gloss: {gloss_pixels_rgb}")
         if len(diffuse_pixels_rgb) > 0:
             st.write(f"ค่าสี RGB ของพิกเซล Diffuse: {diffuse_pixels_rgb}")
-            
-    # Prepare the dictionary
-    settings_data = {
-        "frame_num": int(st.session_state.stored_frame_num),
-        "pad_x": float(st.session_state.stored_pad_x),
-        "pad_y": float(st.session_state.stored_pad_y),
-        "shrink": float(st.session_state.stored_shrink),
-        "cat_method": st.session_state.stored_cat_method,
-        "clustering_threshold": float(st.session_state.stored_threshold),
-        "max_kmeans_iterations": int(st.session_state.stored_iterations),
-    }
-    
-    # Add conditional variables based on CAT method
-    if st.session_state.stored_cat_method == "custom":
-        settings_data["light_source"] = st.session_state.stored_light_source
-        settings_data["light_target"] = st.session_state.stored_light_target
-    elif st.session_state.stored_cat_method == "white_patch":
-        settings_data["white_patch_lower"] = float(st.session_state.stored_lower)
-        settings_data["white_patch_upper"] = float(st.session_state.stored_upper)
-
-    # Convert dictionary to a formatted JSON string
-    json_string = json.dumps(settings_data, indent=4)
-    
-    # Create a download button
-    with st.sidebar:
-        st.divider()
-        st.download_button(
-            label="💾 Save Settings as JSON",
-            data=json_string,
-            file_name=f"settings.json",
-            mime="application/json",
-            width='stretch'
-        )
 else:
     st.error(f"ไม่พบไฟล์ภาพใน Path: {image_path}")

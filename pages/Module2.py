@@ -150,7 +150,7 @@ def main():
             st.subheader(f"✨ CAT Result ({method_name})")
             st.image(cv2.cvtColor(processed_bgr, cv2.COLOR_BGR2RGB), width='stretch')
             
-        with st.expander("ℹ️ Details"):
+        with st.expander("ℹ️ Settings Details"):
             st.write(f"Processing Frame: {st.session_state.stored_frame_num}")
             st.write(f"Object Detection Pad_x: {st.session_state.stored_pad_x}")
             st.write(f"Object Detection Pad_y: {st.session_state.stored_pad_y}")
