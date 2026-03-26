@@ -10,8 +10,6 @@ st.set_page_config(page_title="Capstone Project", layout="wide")
 PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 
-st.title("🔍 Module 4 Color Measurement")
-st.divider()
 # --- Initialize session state ---
 def init_session_state():
     """รวมการประกาศ Session State """
@@ -24,6 +22,9 @@ def init_session_state():
         if key not in st.session_state:
             st.session_state[key] = val  
 init_session_state()
+
+st.title("🤖 Module 4: Color Measurement")
+st.divider()
 
 image_path = rf"tmp\glossReplaced_frames\GlossReplaced_frame_{st.session_state.stored_frame_num}.jpg"
 

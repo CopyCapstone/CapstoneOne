@@ -92,7 +92,7 @@ def sidebar_controls():
         
 # --- Main Application Execution ---
 def main():
-    st.title("🌓 Module 2: Chromatic Adaptation")
+    st.title("😼 Module 2: Chromatic Adaptation Transform")
     st.divider()
     init_session_state()
     sidebar_controls()

@@ -17,8 +17,6 @@ def create_color_box(rgb):
     r, g, b = rgb
     return f'<span style="display:inline-block; width:70px; height:70px; background-color:rgb({r},{g},{b}); border:1px solid #ccc; border-radius:4px; vertical-align:middle; margin-left:10px;"></span>'
 
-st.title("🔍 Module 3 & 5: Pixel Segmentation and Glossiness Measurement")
-st.divider()
 # --- Initialize session state ---
 def init_session_state():
     """รวมการประกาศ Session State """
@@ -32,9 +30,10 @@ def init_session_state():
             st.session_state[key] = val  
 init_session_state()
 
+st.title("📚 Module 3 & 5: Pixel Segmentation and Glossiness Measurement")
+st.divider()
 with st.sidebar:
     st.header("⚙️ Segmentation Settings")
-    
     # แปลง threshold เป็น Slider (0.0 - 1.0)
     # Default 0.20 ตามที่เขียนไว้ใน docstring ของฟังก์ชัน kmeans
     st.write("Default Clustering Threshold: 0.20 Default Max Iterations: 1")

@@ -55,6 +55,10 @@ def init_session_state():
             st.session_state[key] = val  
 init_session_state()
 
+# --- Main Display Area ---
+st.title("🔍 Module 1: Object Detection")
+st.divider()
+
 # --- Sidebar UI Upload section ---
 total_frames, fps, duration = 0, 0, 0 # Default values in case no video is loaded
 with st.sidebar:
@@ -75,7 +79,7 @@ with st.sidebar:
         total_frames, fps, duration = get_video_info(st.session_state.video_path)
         if total_frames > 0:
             st.divider()
-            st.markdown(f"Info: {duration:.2f}s | {total_frames} frames")
+            st.markdown(f"Info: {duration:.2f}s | FPS: {fps} | {total_frames} frames")
             col_f1, col_f2 = st.columns([0.7, 0.3])
             with col_f1:
                 st.slider(
@@ -106,9 +110,6 @@ with st.sidebar:
                 st.session_state.stored_pad_y = st.session_state.pad_y_slider
                 st.session_state.stored_shrink = st.session_state.shrink_slider
 
-# --- Main Display Area ---
-st.title("🔍 Module 1: Object Detection")
-st.divider()
 if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     cap = get_video_capture(st.session_state.video_path)
     cap.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.stored_frame_num)
