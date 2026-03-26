@@ -3,7 +3,7 @@ import streamlit as st
 import cv2
 import os
 from pathlib import Path
-from Module_04_Color_Measurement.prepare_input import prepare_input
+from Module_04_ColorMeasurement.prepare_input import prepare_input
 
 # --- Configuration & Constants ---
 st.set_page_config(page_title="Capstone Project", layout="wide")
