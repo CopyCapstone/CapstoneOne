@@ -1,7 +1,6 @@
 import streamlit as st
 import cv2
 import os
-import numpy as np
 from pathlib import Path
 from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
 
