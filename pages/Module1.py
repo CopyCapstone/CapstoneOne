@@ -5,7 +5,6 @@ from pathlib import Path
 from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
 
 # --- Configuration & Paths ---
-st.set_page_config(page_title="Capstone Project", layout="wide")
 PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 

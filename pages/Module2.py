@@ -10,10 +10,10 @@ from Module_02_ChromaticAdaptationTransform.cat import chromatic_adaptation_tran
 from Module_02_ChromaticAdaptationTransform.custom_CAT import custom_CAT
 
 # --- Configuration & Constants ---
-st.set_page_config(page_title="Capstone Project", layout="wide")
 PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 ILLUMINANTS_xy = CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']
+
 # --- Helper Functions (Logic) ---
 def process_cat_logic(image_path, method, lower, upper, src_light, tgt_light):
     img_bgr = cv2.imread(str(image_path))

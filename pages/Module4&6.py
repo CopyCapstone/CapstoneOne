@@ -7,7 +7,6 @@ from Module_04_ColorMeasurement.prepare_input import prepare_input
 import json
 
 # --- Configuration & Constants ---
-st.set_page_config(page_title="Capstone Project", layout="wide")
 PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 
@@ -52,7 +51,7 @@ if os.path.exists(str(image_path)):
         except Exception as e:
             st.error(f"Error loading or predicting: {e}") 
     with col2:
-        with st.expander("ℹ️ Settings Details"):
+        with st.expander("ℹ️ Settings Details", expanded=True):
             st.write(f"Processing Frame: {st.session_state.stored_frame_num}")
             st.write(f"Object Detection Pad_x: {st.session_state.stored_pad_x}")
             st.write(f"Object Detection Pad_y: {st.session_state.stored_pad_y}")
