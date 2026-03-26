@@ -1,6 +1,4 @@
-from email.policy import default
 import json
-
 import streamlit as st
 import cv2
 import os

@@ -1,6 +1,5 @@
 import streamlit as st
 import cv2
-import os
 import numpy as np
 from pathlib import Path
 from skimage.color import rgb2xyz, xyz2rgb
