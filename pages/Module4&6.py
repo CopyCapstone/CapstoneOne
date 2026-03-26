@@ -12,17 +12,6 @@ PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 
 # --- Initialize session state ---
-def init_session_state():
-    """รวมการประกาศ Session State """
-    defaults = {
-        # "stored_threshold": 0.2,
-        # "stored_iterations": 1,
-        # "stored_gloss_percent": 0,
-    }
-    for key, val in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = val  
-init_session_state()
 
 st.title("🤖 Module 4 & 6: Color Measurement and Visualization")
 st.divider()
