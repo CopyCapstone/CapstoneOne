@@ -1,8 +1,8 @@
 {
     "frame_num": 0,
-    "pad_x": 0,
-    "pad_y": 0,
-    "shrink": 0,
+    "pad_x": -0.1,
+    "pad_y": -0.05,
+    "shrink": 0.2,
     "cat_method": "custom",
     "clustering_threshold": 0.2,
     "max_kmeans_iterations": 1,
