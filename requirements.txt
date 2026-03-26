@@ -5,3 +5,4 @@ ultralytics
 scikit-learn
 colour-science
 scikit-image
+tensorflow
