@@ -12,6 +12,15 @@ PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 
 # --- Initialize session state ---
+def init_session_state():
+    """รวมการประกาศ Session State """
+    defaults = {
+        "stored_predict_lab": 0,
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val  
+init_session_state()
 
 st.title("🤖 Module 4 & 6: Color Measurement and Visualization")
 st.divider()
@@ -23,7 +32,6 @@ if os.path.exists(str(image_path)):
     with col1:
         # 1. โหลดภาพและประมวลผล
         data_raw = cv2.imread(str(image_path))
-        h, w, _ = data_raw.shape 
         RGB_mean = st.session_state.stored_average_RGB_diffuse 
         st.image(cv2.cvtColor(data_raw, cv2.COLOR_BGR2RGB), caption=f"GlossReplaced_frame_{st.session_state.stored_frame_num}")
         st.metric(label="Gloss Replaced by Mean Diffuse", value=f"RBG: {RGB_mean}")
@@ -36,10 +44,11 @@ if os.path.exists(str(image_path)):
             # 3. ทำการ Predict
             prediction = model.predict(input_data)
             # 4. แสดงผลลัพธ์
-            pred_L = prediction[0][0] * 100.0
-            pred_a = (prediction[0][1] * 240.0) - 120.0
-            pred_b = (prediction[0][2] * 240.0) - 120.0
-            st.metric(label=f"AI Prediction Result", value=f"L\*a\*b\*: [{pred_L:.2f} {pred_a:.2f} {pred_b:.2f}]")
+            pred_L = round(float(prediction[0][0] * 100.0), 2)
+            pred_a = round(float((prediction[0][1] * 240.0) - 120.0), 2)
+            pred_b = round(float((prediction[0][2] * 240.0) - 120.0), 2)
+            st.session_state.stored_predict_lab = [pred_L,pred_a,pred_b]
+            st.metric(label=f"AI Prediction Result", value=f"L\*a\*b\*: [{pred_L} {pred_a} {pred_b}]")
         except Exception as e:
             st.error(f"Error loading or predicting: {e}") 
     with col2:
@@ -59,6 +68,7 @@ if os.path.exists(str(image_path)):
             st.write(f"Pixel Segmentation Gloss Percentage: {st.session_state.stored_gloss_percent * 100:.2f}%")
             st.write(f"The average RGB value of specular pixels: {st.session_state.stored_average_RGB_gloss}")
             st.write(f"The average RGB value of diffuse pixels: {st.session_state.stored_average_RGB_diffuse}")
+            st.write(f"Prediction Result L\*a\*b\* value of diffuse pixels: {st.session_state.stored_predict_lab}")
 
     # Prepare the dictionary
     settings_data = {
