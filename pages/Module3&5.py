@@ -172,9 +172,9 @@ if os.path.exists(image_path):
     # Prepare the dictionary
     settings_data = {
         "frame_num": int(st.session_state.stored_frame_num),
-        "pad_x": int(st.session_state.stored_pad_x),
-        "pad_y": int(st.session_state.stored_pad_y),
-        "shrink": int(st.session_state.stored_shrink),
+        "pad_x": float(st.session_state.stored_pad_x),
+        "pad_y": float(st.session_state.stored_pad_y),
+        "shrink": float(st.session_state.stored_shrink),
         "cat_method": st.session_state.stored_cat_method,
         "clustering_threshold": float(st.session_state.stored_threshold),
         "max_kmeans_iterations": int(st.session_state.stored_iterations),
