@@ -61,7 +61,7 @@ st.divider()
 total_frames, fps, duration = 0, 0, 0 # Default values in case no video is loaded
 with st.sidebar:
     st.header("📽️ Video Input")
-    uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported formats: MP4, MOV, AVI (Max 200 MB)")
+    uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported Formats: MP4, MOV, AVI (Max 200 MB)")
     if uploaded_video:
         new_video_path = save_temp_video(uploaded_video)
         # Check if this is a NEW video
