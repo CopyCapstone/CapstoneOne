@@ -35,7 +35,7 @@ def prepare_input(rgb_values):
     a_cal_norm = (a_cal + 120.0) / 240.0
     b_cal_norm = (b_cal + 120.0) / 240.0
     
-    # 4. เรียงลำดับ Features ให้ตรงกับ DataFrame ตอน Train เป๊ะๆ
+    # 4. เรียงลำดับ Features ให้ตรงกับ DataFrame ตอน Train
     # ลำดับใน Train Data: 'R', 'G', 'B', 'L_cal', 'a_cal', 'b_cal', 'R*G', 'R*B', 'G*B', 'R**2', 'G**2', 'B**2'
     features = [
         r, g, b, 
