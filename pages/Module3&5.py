@@ -83,11 +83,11 @@ if os.path.exists(str(image_path)):
     # ค่า Gloss Percentage และ ค่าเฉลี่ย RGB ของ Gloss
     st.session_state.stored_gloss_percent = gloss_percent
     st.metric(label="Gloss Percentage", value=f"{gloss_percent * 100:.2f}%")
-    gloss_pixels_bgr = data_raw[mask_gloss]
-    gloss_pixels_rgb = gloss_pixels_bgr[:, ::-1]
-    average_BGR_gloss = gloss_pixels_bgr.mean(axis=0).astype(np.uint8)
-    average_RGB_gloss = average_BGR_gloss[::-1]
-    st.session_state.stored_average_RGB_gloss = average_RGB_gloss
+    specular_pixels_bgr = data_raw[mask_gloss]
+    specular_pixels_rgb = specular_pixels_bgr[:, ::-1]
+    average_BGR_specular = specular_pixels_bgr.mean(axis=0).astype(np.uint8)
+    average_RGB_specular = average_BGR_specular[::-1]
+    st.session_state.stored_average_RGB_specular = average_RGB_specular
     
     # ค่า ค่าเฉลี่ย RGB ของ Diffuse (ส่วนที่ไม่ใช่ Gloss)
     diffuse_pixels_bgr = data_raw[mask_not_gloss]
@@ -98,9 +98,9 @@ if os.path.exists(str(image_path)):
 
     col1, col2, col3, col4 = st.columns([0.3, 0.2, 0.3, 0.2])
     with col1:
-        st.metric(label="The average RGB value of specular pixels", value=f"{average_RGB_gloss}")
+        st.metric(label="The average RGB value of specular pixels", value=f"{average_RGB_specular}")
     with col2:
-        st.write(f"{create_color_box(average_RGB_gloss)}", unsafe_allow_html=True)
+        st.write(f"{create_color_box(average_RGB_specular)}", unsafe_allow_html=True)
     with col3:
         st.metric(label="The average RGB value of diffuse pixels", value=f"{average_RGB_diffuse}")  
     with col4:
@@ -111,7 +111,7 @@ if os.path.exists(str(image_path)):
     # --- สร้างรูปที่ 3: แทนที่ Gloss ด้วย Mean ของ Not-Gloss ---
     replaced_img = data_raw.copy()
     if np.any(mask_not_gloss):
-        # คำนวณค่าสีเฉลี่ยของส่วนที่ไม่ใช่ Gloss (BGR) ไว้แล้ว = average_BGR_diffuse
+        # คำนวณค่าสีเฉลี่ยของส่วนที่ไม่ใช่ Specular (BGR) ไว้แล้ว = average_BGR_diffuse
         # แทนที่บริเวณ Gloss ด้วยค่าเฉลี่ยนั้น
         replaced_img[mask_gloss] = average_BGR_diffuse
     else:
@@ -123,14 +123,14 @@ if os.path.exists(str(image_path)):
                  caption="1. Original Image", width='stretch')
     with col2:
         st.image(cv2.cvtColor(gloss_only, cv2.COLOR_BGR2RGB), 
-                 caption="2. Gloss Area Only", width='stretch')
+                 caption="2. Specular Area Only", width='stretch')
         debug_dir = TMP_DIR / "glossArea_frames"
         debug_dir.mkdir(parents=True, exist_ok=True)
         debug_path = debug_dir / f"GlossArea_frame_{st.session_state.stored_frame_num}.jpg"
         cv2.imwrite(str(debug_path), gloss_only)
     with col3:
         st.image(cv2.cvtColor(replaced_img, cv2.COLOR_BGR2RGB), 
-                 caption="3. Gloss Replaced by Mean Diffuse", width='stretch')
+                 caption="3. Specular Replaced by Mean Diffuse", width='stretch')
         debug_dir = TMP_DIR / "glossReplaced_frames"
         debug_dir.mkdir(parents=True, exist_ok=True)
         debug_path = debug_dir / f"GlossReplaced_frame_{st.session_state.stored_frame_num}.jpg"
@@ -150,14 +150,14 @@ if os.path.exists(str(image_path)):
         st.write(f"Max K-means Iterations: {st.session_state.stored_iterations}")
         st.divider()
         st.write(f"Pixel Segmentation Gloss Percentage: {st.session_state.stored_gloss_percent * 100:.2f}%")
-        st.write(f"The average RGB value of specular pixels: {st.session_state.stored_average_RGB_gloss}")
+        st.write(f"The average RGB value of specular pixels: {st.session_state.stored_average_RGB_specular}")
         st.write(f"The average RGB value of diffuse pixels: {st.session_state.stored_average_RGB_diffuse}")
-    with st.expander("🕵️‍♂️ เจาะลึกค่าสีบริเวณ Gloss"):
-        if len(gloss_pixels_rgb) > 0:
-            unique_colors = np.unique(gloss_pixels_rgb, axis=0)
-            st.write(f"จำนวนพิกเซล Gloss ทั้งหมด: {len(gloss_pixels_bgr)} พิกเซล จาก พิกเซลของภาพทั้งหมด {h*w} พิกเซล")
+    with st.expander("🕵️‍♂️ เจาะลึกค่าสีบริเวณ Specular"):
+        if len(specular_pixels_rgb) > 0:
+            unique_colors = np.unique(specular_pixels_rgb, axis=0)
+            st.write(f"จำนวนพิกเซล Specular ทั้งหมด: {len(specular_pixels_bgr)} พิกเซล จาก พิกเซลของภาพทั้งหมด {h*w} พิกเซล")
             st.write(f"จำนวนเฉดสีที่พบ (Unique Colors): {len(unique_colors)} เฉดสี จาก Unique Colors ของภาพทั้งหมด {len(np.unique(data_raw, axis=0))} เฉดสี")
-            st.write(f"ค่าสี RGB ของพิกเซล Gloss: {gloss_pixels_rgb}")
+            st.write(f"ค่าสี RGB ของพิกเซล Specular: {specular_pixels_rgb}")
         if len(diffuse_pixels_rgb) > 0:
             st.write(f"ค่าสี RGB ของพิกเซล Diffuse: {diffuse_pixels_rgb}")
 else:

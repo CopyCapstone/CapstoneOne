@@ -9,6 +9,7 @@ import json
 # --- Configuration & Constants ---
 PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
+SETTING_FILE = TMP_DIR / 'settings.json'
 
 # --- Initialize session state ---
 def init_session_state():
@@ -33,7 +34,7 @@ if os.path.exists(str(image_path)):
         data_raw = cv2.imread(str(image_path))
         RGB_mean = st.session_state.stored_average_RGB_diffuse 
         st.image(cv2.cvtColor(data_raw, cv2.COLOR_BGR2RGB), caption=f"GlossReplaced_frame_{st.session_state.stored_frame_num}")
-        st.metric(label="Gloss Replaced by Mean Diffuse", value=f"RBG: {RGB_mean}")
+        st.metric(label="Specular Replaced by Mean Diffuse", value=f"RBG: {RGB_mean}")
         # 1. โหลดโมเดล
         try:
             model = tf.keras.models.load_model('my_model.keras')
@@ -65,13 +66,12 @@ if os.path.exists(str(image_path)):
             st.write(f"Max K-means Iterations: {st.session_state.stored_iterations}")
             st.divider()
             st.write(f"Pixel Segmentation Gloss Percentage: {st.session_state.stored_gloss_percent * 100:.2f}%")
-            st.write(f"The average RGB value of specular pixels: {st.session_state.stored_average_RGB_gloss}")
+            st.write(f"The average RGB value of specular pixels: {st.session_state.stored_average_RGB_specular}")
             st.write(f"The average RGB value of diffuse pixels: {st.session_state.stored_average_RGB_diffuse}")
             st.write(f"Prediction Result L\*a\*b\* value of diffuse pixels: {st.session_state.stored_predict_lab}")
 
     # Prepare the dictionary
     settings_data = {
-        "frame_num": int(st.session_state.stored_frame_num),
         "pad_x": float(st.session_state.stored_pad_x),
         "pad_y": float(st.session_state.stored_pad_y),
         "shrink": float(st.session_state.stored_shrink),
@@ -84,22 +84,26 @@ if os.path.exists(str(image_path)):
     if st.session_state.stored_cat_method == "custom":
         settings_data["light_source"] = st.session_state.stored_light_source
         settings_data["light_target"] = st.session_state.stored_light_target
+        settings_data["white_patch_lower"] = None
+        settings_data["white_patch_upper"] = None
+
     elif st.session_state.stored_cat_method == "white_patch":
+        settings_data["light_source"] = None
+        settings_data["light_target"] = None
         settings_data["white_patch_lower"] = float(st.session_state.stored_lower)
         settings_data["white_patch_upper"] = float(st.session_state.stored_upper)
 
     # Convert dictionary to a formatted JSON string
     json_string = json.dumps(settings_data, indent=4)
     
-    # Create a download button
     with st.sidebar:
-        st.download_button(
-            label="💾 Save Settings as JSON",
-            data=json_string,
-            file_name=f"settings.json",
-            mime="application/json",
-            width='stretch'
-        )
-
+        if st.button("💾 Save Settings to System"):
+            try:
+                with open(SETTING_FILE, 'w') as f:
+                    f.write(json_string)
+                st.success(f"บันทึกการตั้งค่าลงใน {SETTING_FILE} เรียบร้อยแล้ว!")                
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
+                
 else:
     st.error(f"ไม่พบไฟล์ภาพใน Path: {image_path}")

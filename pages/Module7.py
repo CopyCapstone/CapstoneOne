@@ -1,0 +1,222 @@
+import streamlit as st
+import cv2
+import os
+from pathlib import Path
+from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
+from Module_03_PixelSegmentation.gloss import detect_gloss
+from Module_04_ColorMeasurement.prepare_input import prepare_input
+from Module_07_BatchProcessing.kmeans_batch import kmeans
+from Module_07_BatchProcessing.process_cat_logic_batch import process_cat_logic
+import tensorflow as tf
+
+from skimage.color import rgb2xyz, xyz2rgb
+import pandas as pd
+import json
+from colour.colorimetry import CCS_ILLUMINANTS
+import numpy as np
+
+# --- Configuration & Paths ---
+PROJECT_ROOT = Path(__file__).parent.parent
+TMP_DIR = PROJECT_ROOT / "tmp"
+SETTING_FILE = TMP_DIR / 'settings.json'
+
+def load_config():
+    if os.path.exists(SETTING_FILE):
+        with open(SETTING_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+@st.cache_data
+def get_video_info(video_path):
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return 0, 0, 0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    total_frames = total_frames -2
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    duration = total_frames / fps if fps > 0 else 0
+    cap.release()
+    return total_frames, fps, duration
+
+
+total_frames, fps, duration = 0, 0, 0
+with st.sidebar:
+    if st.session_state.video_path:
+        total_frames, fps, duration = get_video_info(st.session_state.video_path)
+        if total_frames > 0:
+            st.markdown(f"Info: {duration:.2f}s | FPS: {fps} | {total_frames} frames")
+            st.divider()
+    config = load_config()
+    pad_x = float(config.get("pad_x", -0.1))
+    pad_y = float(config.get("pad_y", -0.05))
+    shrink_val = float(config.get("shrink", 0.2))
+    cat_method = str(config.get("cat_method", "custom"))
+    light_source = str(config.get("light_source", "D65"))
+    light_target = str(config.get("light_target", "D65"))
+    white_patch_lower = int(config.get("white_patch_lower", 95))
+    white_patch_upper = int(config.get("white_patch_upper", 99))
+    clustering_threshold = float(config.get("clustering_threshold", 0.20))
+    max_kmeans_iterations = int(config.get("max_kmeans_iterations", 1))
+
+    st.header("⚙️ System Settings")
+    st.subheader("Current Parameters")
+    st.json(config) # แสดงโครงสร้าง JSON ให้ดูแบบสวยงาม
+    
+# โหลดโมเดล
+try:
+    model = tf.keras.models.load_model('my_model.keras')
+except Exception as e:
+    st.error(f"Error loading or predicting: {e}") 
+video_path = str(TMP_DIR/ "uploaded_video" / "uploaded_video.mp4")
+
+if os.path.exists(video_path):
+    st.write(f"✅ Video found: {video_path}") 
+    # Show Video Player FIRST (so it's always visible)
+    try:
+        with open(video_path, "rb") as f:
+            st.video(f.read())
+    except Exception as e:
+        st.error(f"Error loading video player: {e}")
+        
+    # Loop through the range of frames you want to display
+    if st.button("Plain button", width="stretch"):
+        data = pd.DataFrame()
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            st.error("OpenCV could not open the file. Check if it's a valid video.")
+        else:
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            # Get actual frame count from the opened file
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            # ดึงค่า FPS ของวิดีโอ
+            video_fps = cap.get(cv2.CAP_PROP_FPS) 
+            # คำนวณจำนวนวินาทีทั้งหมด
+            total_seconds = int(total_frames / video_fps)
+            st.write(f"video_fps:{video_fps}, total_frames:{total_frames}, total_seconds:{total_seconds}")
+            #สร้าง UI Elements เตรียมไว้ก่อน
+            col_a, col_b, col_c= st.columns([0.4,0.3,0.3])
+            with col_a:image_placeholder = st.empty()
+            with col_b:crop_image_placeholder = st.empty()
+            with col_c:cat_image_placeholder = st.empty()
+            col_d, col_e= st.columns([0.5,0.5])
+            with col_d:specular_only_placeholder = st.empty()
+            with col_e:replaced_img_placeholder = st.empty()
+            col_f, col_g = st.columns([0.5,0.5])
+            with col_f:
+                specular_rgb_placeholder = st.empty()
+            with col_g:
+                rgb_placeholder = st.empty()
+                lab_placeholder = st.empty()
+                    
+            table_placeholder = st.empty()
+                
+            for sec in range(total_seconds):
+                # คำนวณหา index ของเฟรมที่อยู่ที่วินาทีนั้นๆ
+                frame_id = int(sec * video_fps)
+                # สั่งให้ OpenCV กระโดดไปที่เฟรมนั้น
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
+                success, frame_bgr = cap.read()
+                if success:
+                        # อัปเดต Progress ตามสัดส่วนวินาที
+                        progress = (sec + 1) / total_seconds
+                        progress_bar.progress(progress)
+                        status_text.text(f"กำลังประมวลผล: วินาทีที่ {sec + 1} / {total_seconds} (Frame {frame_id})")
+
+                        # ประมวลผล Image
+                        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+                        cropped_bgr = detect_rotate_crop(frame_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
+                        cropped_rgb = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2RGB)
+                        if cat_method == "custom":
+                            cat_bgr = process_cat_logic(cropped_bgr, cat_method,None,None,light_source,light_target)        
+                        else:
+                            processed_full_bgr = process_cat_logic(frame_bgr, cat_method,white_patch_lower,white_patch_upper,None,None)            
+                            if processed_full_bgr is not None:
+                            # ทำ Object Detection (Crop) 
+                                cat_bgr = detect_rotate_crop(processed_full_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
+                            # ตรวจสอบกรณี Detect ไม่เจอ
+                            if cat_bgr is None:
+                                st.error("🎯 Detection failed on processed image. Show full frame instead.")
+                                cat_bgr = processed_full_bgr
+                        cat_rgb = cv2.cvtColor(cat_bgr, cv2.COLOR_BGR2RGB)
+                        # รัน K-means และค้นหา Gloss
+                        centroids, labels = kmeans(cat_bgr, clustering_threshold, max_kmeans_iterations)
+                        gloss_percent, gloss_label = detect_gloss(centroids, labels)
+                        
+                        # เตรียม Mask
+                        mask_gloss = (labels == gloss_label)
+                        mask_not_gloss = (labels != gloss_label)
+                        
+                        # ค่า Gloss Percentage และ ค่าเฉลี่ย RGB ของ Gloss (specular)
+                        specular_pixels_bgr = cat_bgr[mask_gloss]
+                        specular_pixels_rgb = specular_pixels_bgr[:, ::-1]
+                        average_BGR_specular = specular_pixels_bgr.mean(axis=0).astype(np.uint8)
+                        average_RGB_specular = average_BGR_specular[::-1]
+                        
+                        # ค่า ค่าเฉลี่ย RGB ของ Diffuse (ส่วนที่ไม่ใช่ Gloss)
+                        diffuse_pixels_bgr = cat_bgr[mask_not_gloss]
+                        diffuse_pixels_rgb = diffuse_pixels_bgr[:, ::-1]
+                        average_BGR_diffuse = diffuse_pixels_bgr.mean(axis=0).astype(np.uint8)
+                        average_RGB_diffuse = average_BGR_diffuse[::-1]
+                        
+                        # --- สร้างรูปที่: บริเวณเฉพาะที่เป็น Gloss (Masked Image) ---
+                        specular_only = np.zeros_like(cat_bgr)
+                        specular_only[mask_gloss] = cat_bgr[mask_gloss]
+                        specular_only_rgb = cv2.cvtColor(specular_only, cv2.COLOR_BGR2RGB)
+                        # --- สร้างรูปที่: แทนที่ Gloss ด้วย Mean ของ Not-Gloss ---
+                        replaced_img = cat_bgr.copy()
+                        if np.any(mask_not_gloss):
+                            # คำนวณค่าสีเฉลี่ยของส่วนที่ไม่ใช่ Gloss (BGR) ไว้แล้ว = average_BGR_diffuse
+                            # แทนที่บริเวณ Gloss ด้วยค่าเฉลี่ยนั้น
+                            replaced_img[mask_gloss] = average_BGR_diffuse
+                            replaced_img_rgb = cv2.cvtColor(replaced_img, cv2.COLOR_BGR2RGB)
+
+
+                        input_data = prepare_input(average_RGB_diffuse)
+                        # ทำการ Predict
+                        prediction = model.predict(input_data)
+                        # แสดงผลลัพธ์
+                        pred_L = round(float(prediction[0][0] * 100.0), 2)
+                        pred_a = round(float((prediction[0][1] * 240.0) - 120.0), 2)
+                        pred_b = round(float((prediction[0][2] * 240.0) - 120.0), 2)
+                        rgb_placeholder.metric(label="Specular Replaced by Mean Diffuse", value=f"RBG: {average_RGB_diffuse}")
+                        lab_placeholder.metric(label=f"AI Prediction Result", value=f"L\*a\*b\*: [{pred_L} {pred_a} {pred_b}]")
+                        specular_rgb_placeholder.metric(label="Mean Specular Area", value=f"RBG: {average_RGB_specular}")
+                        # แสดงผลแบบเขียนทับที่เดิม (Placeholder)
+                        image_placeholder.image(frame_rgb, caption=f"Time: {sec}s (Frame {frame_id})", width="stretch")                    
+                        crop_image_placeholder.image(cropped_rgb, caption=f"crop_image")                    
+                        cat_image_placeholder.image(cat_rgb, caption=f"cat_image")                    
+                        specular_only_placeholder.image(specular_only_rgb, caption=f"specular_only_image")  
+                        replaced_img_placeholder.image(replaced_img_rgb, caption=f"replaced_specular_image")  
+
+
+                        new_row_data = [{
+                            'sec': sec, 
+                            'frame_index': frame_id, 
+                            'diffuse_rgb_avg':average_RGB_diffuse,
+                            'cielab_L':pred_L,
+                            'cielab_a':pred_a,
+                            'cielab_b':pred_b,
+                            'specular_rgb_avg': average_RGB_specular,
+                            'gloss_percent': gloss_percent
+                            }]
+                        new_row_df = pd.DataFrame(new_row_data)
+                        data = pd.concat([data,new_row_df], ignore_index=True)
+
+                        # 2. อัปเดตตารางในตำแหน่งเดิม
+                        # สมมติ confusion_matrix ของคุณมีการเปลี่ยนแปลงใน loop นี้
+                        table_placeholder.table(data)
+                else:
+                    break
+
+            st.success("✅ ประมวลผลเสร็จสิ้น!")            
+            cap.release()
+            
+else:
+    st.info("👈 Please start at Module1 to begin.")
+    
+    
+
+
+

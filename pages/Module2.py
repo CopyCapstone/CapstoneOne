@@ -118,7 +118,7 @@ def main():
         m1_shrink = st.session_state.get("stored_shrink", 0.2)
 
         if st.session_state.stored_cat_method == "custom":
-            processed_bgr = process_cat_logic(crop_path, method,lower_percentile,upper_percentile,light_source,light_target)        
+            processed_bgr = process_cat_logic(crop_path, method,None,None,light_source,light_target)        
         else:
             processed_full_bgr = process_cat_logic(full_path, method,lower_percentile,upper_percentile,None,None)            
             if processed_full_bgr is not None:
