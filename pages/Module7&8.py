@@ -24,6 +24,9 @@ def load_config():
             return json.load(f)
     return {}
 
+st.title("🔥 Module 7 & 8: Batch Processing and Data Aggregation")
+st.divider()
+
 with st.sidebar:
     config = load_config()
     pad_x = float(config.get("pad_x", -0.1))
@@ -45,7 +48,7 @@ with st.sidebar:
     st.subheader("Current Parameters")
     st.json(config) # แสดงโครงสร้าง JSON ให้ดูแบบสวยงาม
     st.divider()
-    batchButton = st.button("GO!!!", type="primary", width="stretch")
+    batchButton = st.button("GO❕❕❕", type="primary", width="stretch")
 
 
 # โหลดโมเดล
