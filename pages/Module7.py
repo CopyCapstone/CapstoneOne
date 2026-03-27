@@ -24,25 +24,7 @@ def load_config():
             return json.load(f)
     return {}
 
-@st.cache_data
-def get_video_info(video_path):
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        return 0, 0, 0
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    total_frames = total_frames -2
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    duration = total_frames / fps if fps > 0 else 0
-    cap.release()
-    return total_frames, fps, duration
-
-
-total_frames, fps, duration = 0, 0, 0
 with st.sidebar:
-    if VIDEO_PATH:
-        total_frames, fps, duration = get_video_info(str(VIDEO_PATH))
-        if total_frames > 0:
-            st.markdown(f"Info: {duration:.2f}s | FPS: {fps} | {total_frames} frames")
     config = load_config()
     pad_x = float(config.get("pad_x", -0.1))
     pad_y = float(config.get("pad_y", -0.05))
@@ -50,8 +32,12 @@ with st.sidebar:
     cat_method = str(config.get("cat_method", "custom"))
     light_source = str(config.get("light_source", "D65"))
     light_target = str(config.get("light_target", "D65"))
-    white_patch_lower = int(config.get("white_patch_lower", 95))
-    white_patch_upper = int(config.get("white_patch_upper", 99))
+    
+    val_lower = config.get("white_patch_lower")
+    white_patch_lower = int(val_lower) if val_lower is not None else 95
+    val_upper = config.get("white_patch_upper")
+    white_patch_upper = int(val_upper) if val_upper is not None else 99
+    
     clustering_threshold = float(config.get("clustering_threshold", 0.20))
     max_kmeans_iterations = int(config.get("max_kmeans_iterations", 1))
 
@@ -84,16 +70,13 @@ if os.path.exists(str(VIDEO_PATH)):
         if not cap.isOpened():
             st.error("OpenCV could not open the file. Check if it's a valid video.")
         else:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-
             # Get actual frame count from the opened file
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             # ดึงค่า FPS ของวิดีโอ
             video_fps = cap.get(cv2.CAP_PROP_FPS) 
             # คำนวณจำนวนวินาทีทั้งหมด
             total_seconds = int(total_frames / video_fps)
-            st.write(f"video_fps:{video_fps}, total_frames:{total_frames}, total_seconds:{total_seconds}")
+            st.markdown(f"Info: {total_seconds:.2f}s | FPS: {video_fps} | {total_frames} frames")
             #สร้าง UI Elements เตรียมไว้ก่อน
             col_a, col_b, col_c= st.columns([0.4,0.3,0.3])
             with col_a:image_placeholder = st.empty()
@@ -109,9 +92,10 @@ if os.path.exists(str(VIDEO_PATH)):
                 rgb_placeholder = st.empty()
                 lab_placeholder = st.empty()
                     
+            progress_bar = st.progress(0)
             table_placeholder = st.empty()
                 
-            for sec in range(total_seconds):
+            for sec in range(total_seconds+1):
                 # คำนวณหา index ของเฟรมที่อยู่ที่วินาทีนั้นๆ
                 frame_id = int(sec * video_fps)
                 # สั่งให้ OpenCV กระโดดไปที่เฟรมนั้น
@@ -119,9 +103,8 @@ if os.path.exists(str(VIDEO_PATH)):
                 success, frame_bgr = cap.read()
                 if success:
                         # อัปเดต Progress ตามสัดส่วนวินาที
-                        progress = (sec + 1) / total_seconds
-                        progress_bar.progress(progress)
-                        status_text.text(f"กำลังประมวลผล: วินาทีที่ {sec + 1} / {total_seconds} (Frame {frame_id})")
+                        progress = sec / total_seconds
+                        progress_bar.progress(progress,text=f"Processing: seconds {sec} / {total_seconds} (Frame {frame_id})")
 
                         # ประมวลผล Image
                         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
@@ -198,9 +181,7 @@ if os.path.exists(str(VIDEO_PATH)):
                             'sec': sec, 
                             'frame_index': frame_id, 
                             'diffuse_rgb_avg':average_RGB_diffuse,
-                            'cielab_L':pred_L,
-                            'cielab_a':pred_a,
-                            'cielab_b':pred_b,
+                            'predict_CIELAB':[pred_L,pred_a,pred_b],
                             'specular_rgb_avg': average_RGB_specular,
                             'gloss_percent': gloss_percent
                             }]
@@ -209,11 +190,11 @@ if os.path.exists(str(VIDEO_PATH)):
 
                         # 2. อัปเดตตารางในตำแหน่งเดิม
                         # สมมติ confusion_matrix ของคุณมีการเปลี่ยนแปลงใน loop นี้
-                        table_placeholder.table(data)
+                        table_placeholder.dataframe(data,hide_index=True)
                 else:
                     break
 
-            st.success("✅ ประมวลผลเสร็จสิ้น!")            
+            st.sidebar.success("✅ ประมวลผลเสร็จสิ้น!")            
             cap.release()
             
 else:
