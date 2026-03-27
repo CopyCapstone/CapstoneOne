@@ -1,24 +1,22 @@
-import streamlit as st
-import cv2
 import os
+import cv2
+import json
+import numpy as np
+import pandas as pd
+import streamlit as st
+import tensorflow as tf
 from pathlib import Path
 from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
 from Module_03_PixelSegmentation.gloss import detect_gloss
 from Module_04_ColorMeasurement.prepare_input import prepare_input
 from Module_07_BatchProcessing.kmeans_batch import kmeans
 from Module_07_BatchProcessing.process_cat_logic_batch import process_cat_logic
-import tensorflow as tf
-
-from skimage.color import rgb2xyz, xyz2rgb
-import pandas as pd
-import json
-from colour.colorimetry import CCS_ILLUMINANTS
-import numpy as np
 
 # --- Configuration & Paths ---
 PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 SETTING_FILE = TMP_DIR / 'settings.json'
+VIDEO_PATH = TMP_DIR/ "uploaded_video" / "uploaded_video.mp4"
 
 def load_config():
     if os.path.exists(SETTING_FILE):
@@ -41,11 +39,10 @@ def get_video_info(video_path):
 
 total_frames, fps, duration = 0, 0, 0
 with st.sidebar:
-    if st.session_state.video_path:
-        total_frames, fps, duration = get_video_info(st.session_state.video_path)
+    if VIDEO_PATH:
+        total_frames, fps, duration = get_video_info(str(VIDEO_PATH))
         if total_frames > 0:
             st.markdown(f"Info: {duration:.2f}s | FPS: {fps} | {total_frames} frames")
-            st.divider()
     config = load_config()
     pad_x = float(config.get("pad_x", -0.1))
     pad_y = float(config.get("pad_y", -0.05))
@@ -61,27 +58,29 @@ with st.sidebar:
     st.header("⚙️ System Settings")
     st.subheader("Current Parameters")
     st.json(config) # แสดงโครงสร้าง JSON ให้ดูแบบสวยงาม
-    
+    st.divider()
+    batchButton = st.button("GO!!!", type="primary", width="stretch")
+
+
 # โหลดโมเดล
 try:
     model = tf.keras.models.load_model('my_model.keras')
 except Exception as e:
     st.error(f"Error loading or predicting: {e}") 
-video_path = str(TMP_DIR/ "uploaded_video" / "uploaded_video.mp4")
 
-if os.path.exists(video_path):
-    st.write(f"✅ Video found: {video_path}") 
+if os.path.exists(str(VIDEO_PATH)):
+    st.write(f"✅ Video found: {str(VIDEO_PATH)}") 
     # Show Video Player FIRST (so it's always visible)
     try:
-        with open(video_path, "rb") as f:
+        with open(str(VIDEO_PATH), "rb") as f:
             st.video(f.read())
     except Exception as e:
         st.error(f"Error loading video player: {e}")
         
     # Loop through the range of frames you want to display
-    if st.button("Plain button", width="stretch"):
+    if batchButton:
         data = pd.DataFrame()
-        cap = cv2.VideoCapture(video_path)
+        cap = cv2.VideoCapture(str(VIDEO_PATH))
         if not cap.isOpened():
             st.error("OpenCV could not open the file. Check if it's a valid video.")
         else:
@@ -101,12 +100,12 @@ if os.path.exists(video_path):
             with col_b:crop_image_placeholder = st.empty()
             with col_c:cat_image_placeholder = st.empty()
             col_d, col_e= st.columns([0.5,0.5])
-            with col_d:specular_only_placeholder = st.empty()
-            with col_e:replaced_img_placeholder = st.empty()
-            col_f, col_g = st.columns([0.5,0.5])
-            with col_f:
+            with col_d:
+                specular_only_placeholder = st.empty()
+                gloss_percent_placeholder = st.empty()
                 specular_rgb_placeholder = st.empty()
-            with col_g:
+            with col_e:
+                replaced_img_placeholder = st.empty()
                 rgb_placeholder = st.empty()
                 lab_placeholder = st.empty()
                     
@@ -180,9 +179,13 @@ if os.path.exists(video_path):
                         pred_L = round(float(prediction[0][0] * 100.0), 2)
                         pred_a = round(float((prediction[0][1] * 240.0) - 120.0), 2)
                         pred_b = round(float((prediction[0][2] * 240.0) - 120.0), 2)
+                        
                         rgb_placeholder.metric(label="Specular Replaced by Mean Diffuse", value=f"RBG: {average_RGB_diffuse}")
                         lab_placeholder.metric(label=f"AI Prediction Result", value=f"L\*a\*b\*: [{pred_L} {pred_a} {pred_b}]")
+                        
+                        gloss_percent_placeholder.metric(label="Gloss Percentage", value=f"{gloss_percent * 100:.2f}%")
                         specular_rgb_placeholder.metric(label="Mean Specular Area", value=f"RBG: {average_RGB_specular}")
+                        
                         # แสดงผลแบบเขียนทับที่เดิม (Placeholder)
                         image_placeholder.image(frame_rgb, caption=f"Time: {sec}s (Frame {frame_id})", width="stretch")                    
                         crop_image_placeholder.image(cropped_rgb, caption=f"crop_image")                    
