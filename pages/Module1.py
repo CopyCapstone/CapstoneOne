@@ -43,7 +43,6 @@ def init_session_state():
     defaults = {
         "video_path": None,
         "stored_frame_num": 0,
-        "frame_input": 0,
         "stored_pad_x": -0.1,
         "stored_pad_y": -0.05,
         "stored_shrink": 0.2
@@ -63,14 +62,15 @@ with st.sidebar:
     st.header("📽️ Video Input")
     uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported Formats: MP4, MOV, AVI (Max 200 MB)")
     if uploaded_video:
+        # Clear caches for the new video
+        get_video_capture.clear()
+        get_video_info.clear()
         new_video_path = save_temp_video(uploaded_video)
         # Check if this is a NEW video
         if new_video_path != st.session_state.video_path:
             st.session_state.video_path = new_video_path
             st.session_state.stored_frame_num = 0 # Reset frame for new video
-            # Clear caches for the new video
-            get_video_capture.clear()
-            get_video_info.clear()
+
     if st.session_state.video_path:
         if not uploaded_video:
             st.success(f"Using loaded video: {os.path.basename(st.session_state.video_path)}")
@@ -79,34 +79,38 @@ with st.sidebar:
             st.divider()
             st.markdown(f"Info: {duration:.2f}s | FPS: {fps} | {total_frames} frames")
             col_f1, col_f2 = st.columns([0.7, 0.3])
+            
             with col_f1:
-                st.slider(
+                slider_val = st.slider(
                     "Select Frame", 0, total_frames,
                     value=st.session_state.stored_frame_num,
-                    key="slider_frame",
-                    on_change=lambda: st.session_state.update({
-                        "stored_frame_num": st.session_state.slider_frame, 
-                        "frame_input": st.session_state.slider_frame
-                    })
                 )
+                if slider_val != st.session_state.stored_frame_num:
+                    st.session_state.stored_frame_num = slider_val
+                    st.rerun()
+                    
             with col_f2:
-                st.number_input(
+                slider_val = st.number_input(
                     "Frame", 0, total_frames,
                     value=st.session_state.stored_frame_num,
-                    key="frame_input",
-                    on_change=lambda: st.session_state.update({
-                        "stored_frame_num": st.session_state.frame_input, 
-                        "slider_frame": st.session_state.frame_input
-                    })
                 )
+                if slider_val != st.session_state.stored_frame_num:
+                    st.session_state.stored_frame_num = slider_val
+                    st.rerun()
+
+
             with st.expander("⚙️ Detection Settings", expanded=False):
                 st.subheader("Default Pad_X = -0.1 Pad_Y = -0.05 Shrink = 0.2", width='stretch')
-                st.slider("Padding X", -0.45, 0.45, key="pad_x_slider", step=0.01, value= st.session_state.stored_pad_x)
-                st.slider("Padding Y", -0.45, 0.45, key="pad_y_slider", step=0.01, value= st.session_state.stored_pad_y)
-                st.slider("Final Shrink", 0.0, 0.45, key="shrink_slider", step=0.01, value= st.session_state.stored_shrink)
-                st.session_state.stored_pad_x = st.session_state.pad_x_slider
-                st.session_state.stored_pad_y = st.session_state.pad_y_slider
-                st.session_state.stored_shrink = st.session_state.shrink_slider
+                pad_x_slider = st.slider("Padding X", -0.45, 0.45, step=0.01, value= st.session_state.stored_pad_x)
+                pad_y_slider = st.slider("Padding Y", -0.45, 0.45, step=0.01, value= st.session_state.stored_pad_y)
+                shrink_slider = st.slider("Final Shrink", 0.0, 0.45, step=0.01, value= st.session_state.stored_shrink)
+                if (pad_x_slider != st.session_state.stored_pad_x or 
+                    pad_y_slider != st.session_state.stored_pad_y or 
+                    shrink_slider != st.session_state.stored_shrink):
+                    st.session_state.stored_pad_x = pad_x_slider
+                    st.session_state.stored_pad_y = pad_y_slider
+                    st.session_state.stored_shrink = shrink_slider
+                    st.rerun()
 
 if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     cap = get_video_capture(st.session_state.video_path)
