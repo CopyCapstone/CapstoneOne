@@ -31,7 +31,7 @@ def get_video_info(video_path):
     if not cap.isOpened():
         return 0, 0, 0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    total_frames = total_frames -2
+    total_frames = max(0, total_frames - 2) 
     fps = cap.get(cv2.CAP_PROP_FPS)
     duration = total_frames / fps if fps > 0 else 0
     cap.release()
@@ -60,7 +60,7 @@ st.divider()
 total_frames, fps, duration = 0, 0, 0 # Default values in case no video is loaded
 with st.sidebar:
     st.header("📽️ Video Input")
-    uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported Formats: MP4, MOV, AVI (Max 200 MB)")
+    uploaded_video = st.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported Formats: MP4, MOV, AVI (Max 200 MB)")
     if uploaded_video:
         # Clear caches for the new video
         get_video_capture.clear()
