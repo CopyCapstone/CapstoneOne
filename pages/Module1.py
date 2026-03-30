@@ -98,7 +98,6 @@ with st.sidebar:
                     st.session_state.stored_frame_num = slider_val
                     st.rerun()
 
-
             with st.expander("⚙️ Detection Settings", expanded=False):
                 st.subheader("Default Pad_X = -0.1 Pad_Y = -0.05 Shrink = 0.2", width='stretch')
                 pad_x_slider = st.slider("Padding X", -0.45, 0.45, step=0.01, value= st.session_state.stored_pad_x)
