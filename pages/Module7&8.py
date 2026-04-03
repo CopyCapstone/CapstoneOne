@@ -134,12 +134,14 @@ if os.path.exists(str(VIDEO_PATH)):
                         
                         # ค่า Gloss Percentage และ ค่าเฉลี่ย RGB ของ Gloss (specular)
                         specular_pixels_bgr = cat_bgr[mask_gloss]
+                        if len(specular_pixels_bgr) == 0: specular_pixels_bgr = np.array([[0, 0, 0]])  # กรณีไม่มีพิกเซล Gloss เลย ให้ใช้สีดำเป็นค่าเฉลี่ย
                         specular_pixels_rgb = specular_pixels_bgr[:, ::-1]
                         average_BGR_specular = specular_pixels_bgr.mean(axis=0).astype(np.uint8)
                         average_RGB_specular = average_BGR_specular[::-1]
                         
                         # ค่า ค่าเฉลี่ย RGB ของ Diffuse (ส่วนที่ไม่ใช่ Gloss)
                         diffuse_pixels_bgr = cat_bgr[mask_not_gloss]
+                        if len(diffuse_pixels_bgr) == 0: diffuse_pixels_bgr = np.array([[0, 0, 0]])  # กรณีไม่มีพิกเซล Not-Gloss เลย ให้ใช้สีดำเป็นค่าเฉลี่ย
                         diffuse_pixels_rgb = diffuse_pixels_bgr[:, ::-1]
                         average_BGR_diffuse = diffuse_pixels_bgr.mean(axis=0).astype(np.uint8)
                         average_RGB_diffuse = average_BGR_diffuse[::-1]
