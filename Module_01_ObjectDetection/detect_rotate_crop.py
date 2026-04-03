@@ -15,7 +15,7 @@ model = YOLO(MODEL_PATH)
 # pad_x_pct = 0.1 # ปรับเปอร์เซ็นต์ของ padding ในแนวนอน
 # shrink = 0.1 # ปรับเปอร์เซ็นต์ของการหดขอบหลังจากหมุนให้ตรง
 def detect_rotate_crop(image, pad_x_pct=0.1, pad_y_pct=0.1, shrink=0.1):
-
+    print(f"pad_x_pct: {pad_x_pct}, pad_y_pct: {pad_y_pct}, shrink: {shrink}")
     results = model.predict(image, conf=0.25, max_det=1, verbose=False)
 
     if len(results) == 0:
