@@ -53,8 +53,7 @@ with st.sidebar:
     with input2:
         input_iterations = st.number_input(
             "Max Iterations", 
-            min_value=1, 
-            max_value=10, 
+            min_value=0, 
             step=1,
             help="จำนวนรอบที่จะรัน K-means เพื่อหาผลลัพธ์ที่ดีที่สุด",
             value=st.session_state.stored_iterations,
@@ -74,6 +73,7 @@ if os.path.exists(str(image_path)):
     
     # รัน K-means และค้นหา Gloss
     centroids, labels = kmeans(str(image_path), input_threshold, input_iterations)
+    print("labels:", labels)
     gloss_percent, gloss_label = detect_gloss(centroids, labels)
 
     # เตรียม Mask

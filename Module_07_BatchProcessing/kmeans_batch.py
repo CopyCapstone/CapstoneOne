@@ -4,6 +4,12 @@ import numpy as np
 
 # threshold: stops clustering if inertia doesn't improve by at least this much in percentage
 def kmeans(image_bgr, threshold=0.20, iterations=1):
+    # --- เพิ่ม Guard Clause  ---
+    if iterations <= 0:
+        img = cv2.imread(image_bgr)
+        centroids = np.array([img.mean(axis=(0, 1))], dtype=np.uint8)
+        labels = np.ones(img.shape[:2], dtype=np.int32)
+        return centroids, labels
     best = {"inertia": None, "centroids": None, "kmeans": None, "iteration": None}
     for i in range(iterations):
         print("Iteration", i + 1)
