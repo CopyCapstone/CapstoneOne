@@ -39,7 +39,7 @@ def process_cat_logic(image_path, method, lower, upper, src_light, tgt_light):
 def init_session_state():
     """รวมการประกาศ Session State """
     defaults = {
-        "stored_cat_method": "grey_world",
+        "stored_cat_method": "custom",
         "stored_lower": 95,
         "stored_upper": 99,
         "stored_light_source": 'D65',
