@@ -67,7 +67,7 @@ with st.sidebar:
 image_path = TMP_DIR / "CAT_frames" / f"CAT_frame_{st.session_state.stored_frame_num}.jpg"
 
 if os.path.exists(str(image_path)):
-    # 1. โหลดภาพและประมวลผล
+    # โหลดภาพและประมวลผล
     data_raw = cv2.imread(str(image_path))
     h, w, _ = data_raw.shape 
     

@@ -30,7 +30,7 @@ image_path = TMP_DIR / "glossReplaced_frames" / f"GlossReplaced_frame_{st.sessio
 if os.path.exists(str(image_path)):
     col1, col2 = st.columns([0.5, 0.5])
     with col1:
-        # 1. โหลดภาพและประมวลผล
+        # โหลดภาพและประมวลผล
         data_raw = cv2.imread(str(image_path))
         RGB_mean = st.session_state.stored_average_RGB_diffuse 
         st.image(cv2.cvtColor(data_raw, cv2.COLOR_BGR2RGB), caption=f"GlossReplaced_frame_{st.session_state.stored_frame_num}")
