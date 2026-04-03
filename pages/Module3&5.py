@@ -73,7 +73,6 @@ if os.path.exists(str(image_path)):
     
     # รัน K-means และค้นหา Gloss
     centroids, labels = kmeans(str(image_path), input_threshold, input_iterations)
-    print("labels:", labels)
     gloss_percent, gloss_label = detect_gloss(centroids, labels)
 
     # เตรียม Mask
