@@ -6,7 +6,7 @@ import numpy as np
 def kmeans(image_bgr, threshold=0.20, iterations=1):
     # --- เพิ่ม Guard Clause  ---
     if iterations <= 0:
-        img = cv2.imread(image_bgr)
+        img = image_bgr
         centroids = np.array([img.mean(axis=(0, 1))], dtype=np.uint8)
         labels = np.ones(img.shape[:2], dtype=np.int32)
         return centroids, labels
