@@ -168,11 +168,11 @@ if os.path.exists(str(VIDEO_PATH)):
                         pred_a = round(float((prediction[0][1] * 240.0) - 120.0), 2)
                         pred_b = round(float((prediction[0][2] * 240.0) - 120.0), 2)
                         
-                        rgb_placeholder.metric(label="Specular Replaced by Mean Diffuse", value=f"RBG: {average_RGB_diffuse}")
+                        rgb_placeholder.metric(label="Specular Replaced by Mean Diffuse", value=f"RGB: {average_RGB_diffuse}")
                         lab_placeholder.metric(label=f"AI Prediction Result", value=f"L\*a\*b\*: [{pred_L} {pred_a} {pred_b}]")
                         
                         gloss_percent_placeholder.metric(label="Gloss Percentage", value=f"{gloss_percent * 100:.2f}%")
-                        specular_rgb_placeholder.metric(label="Mean Specular Area", value=f"RBG: {average_RGB_specular}")
+                        specular_rgb_placeholder.metric(label="Mean Specular Area", value=f"RGB: {average_RGB_specular}")
                         
                         # แสดงผลแบบเขียนทับที่เดิม (Placeholder)
                         image_placeholder.image(frame_rgb, caption=f"Time: {sec}s (Frame {frame_id})", width="stretch")                    

@@ -34,7 +34,7 @@ if os.path.exists(str(image_path)):
         data_raw = cv2.imread(str(image_path))
         RGB_mean = st.session_state.stored_average_RGB_diffuse 
         st.image(cv2.cvtColor(data_raw, cv2.COLOR_BGR2RGB), caption=f"GlossReplaced_frame_{st.session_state.stored_frame_num}")
-        st.metric(label="Specular Replaced by Mean Diffuse", value=f"RBG: {RGB_mean}")
+        st.metric(label="Specular Replaced by Mean Diffuse", value=f"RGB: {RGB_mean}")
         # 1. โหลดโมเดล
         try:
             model = tf.keras.models.load_model('my_model.keras')
