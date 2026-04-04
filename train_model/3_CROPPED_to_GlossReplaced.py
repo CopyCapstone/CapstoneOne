@@ -15,7 +15,7 @@ OUT_DIR_3_REPLACED = 'GlossReplaced'
 
 # ค่า Default สำหรับ K-means (ดึงมาจากหน้า UI)
 THRESHOLD = 0.20
-MAX_ITERATIONS = 1
+MAX_ITERATIONS = 5
 # ==========================================
 
 # ตรวจสอบว่าโฟลเดอร์หลักมีอยู่จริง

@@ -96,7 +96,8 @@ if os.path.exists(str(VIDEO_PATH)):
                     
             progress_bar = st.progress(0)
             table_placeholder = st.empty()
-                
+            
+            ref_L, ref_a, ref_b = None, None, None
             for sec in range(total_seconds+1):
                 # คำนวณหา index ของเฟรมที่อยู่ที่วินาทีนั้นๆ
                 frame_id = int(sec * video_fps)
@@ -181,14 +182,29 @@ if os.path.exists(str(VIDEO_PATH)):
                         replaced_img_placeholder.image(replaced_img_rgb, caption=f"replaced_specular_image")  
 
 
+                        # --- ส่วนที่เพิ่มใหม่: คำนวณ dE เทียบกับ sec 0 ---
+                        if sec == 0:
+                            # เก็บค่าของวินาทีที่ 0 เป็นค่าอ้างอิง
+                            ref_L, ref_a, ref_b = pred_L, pred_a, pred_b
+                            dE_val = 0.0
+                        else:
+                            # คำนวณหา delta ของแต่ละแกน
+                            dL = pred_L - ref_L
+                            da = pred_a - ref_a
+                            db = pred_b - ref_b
+                            # สูตร Delta E (CIE76)
+                            dE_val = np.sqrt(dL**2 + da**2 + db**2)
+                            dE_val = round(float(dE_val), 4)
+
                         new_row_data = [{
                             'sec': sec, 
                             'frame_index': frame_id, 
                             'diffuse_rgb_avg':average_RGB_diffuse,
                             'predict_CIELAB':[pred_L,pred_a,pred_b],
                             'specular_rgb_avg': average_RGB_specular,
-                            'gloss_percent': gloss_percent
-                            }]
+                            'gloss_percent': gloss_percent,
+                            'dE': dE_val # ใส่ค่าที่คำนวณได้ลงไป
+                        }]
                         new_row_df = pd.DataFrame(new_row_data)
                         data = pd.concat([data,new_row_df], ignore_index=True)
 

@@ -7,8 +7,8 @@ import random
 # ================= การตั้งค่า (ตั้งค่าตรงนี้ได้เลย) =================
 BASE_FOLDER = 'GlossReplaced'           # ชื่อโฟลเดอร์หลักที่มี 63 โฟลเดอร์ย่อยอยู่ข้างใน
 OUTPUT_CSV = 'rgb_augmented.csv' # ชื่อไฟล์ผลลัพธ์ที่จะเซฟ
-NUM_CROPS = 10                  # จำนวนครั้งที่จะสุ่ม Crop ต่อ 1 รูป (Augmentation multiplier)
-CROP_PERCENT = 0.10             # สัดส่วนขนาด Crop เป็น 10% ของภาพ (0.10)
+NUM_CROPS = 5                  # จำนวนครั้งที่จะสุ่ม Crop ต่อ 1 รูป (Augmentation multiplier)
+CROP_PERCENT = 0.20             # สัดส่วนขนาด Crop เป็น 10% ของภาพ (0.10)
 # ==========================================================
 
 data_records = []
