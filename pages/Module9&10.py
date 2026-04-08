@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+import pmdarima as pm
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -55,25 +56,37 @@ def forecast_series(series: pd.Series, steps: int, method: str):
     if method == "Holt-Winters (Exponential Smoothing)":
         # Use simple exponential smoothing when series is too short for trend/season
         trend   = "add" if n >= 4 else None
-        seasonal = None  # Not enough data for seasonality
-        model = ExponentialSmoothing(series, trend=trend, seasonal=seasonal,
-                                     initialization_method="estimated")
+        model = ExponentialSmoothing(series, trend=trend, seasonal=None,initialization_method="estimated")
         fit = model.fit(optimized=True)
         forecast = fit.forecast(steps)
         info = (f"Holt-Winters | trend={'additive' if trend else 'none'}" "|" f"α={fit.params.get('smoothing_level', float('nan')):.4f}" "|" f"β={fit.params.get('smoothing_trend', float('nan')):.4f}" )
 
     else : # "ARIMA"
         try:
-            model = ARIMA(series, order=(1, 1, 0))
-            fit = model.fit()
-            forecast = fit.forecast(steps)
-            info = "ARIMA(1,1,0)"
-        except Exception:
+            # ใช้ Auto-ARIMA ค้นหาพารามิเตอร์ (p,d,q) ที่ดีที่สุดโดยอัตโนมัติ
+            auto_model = pm.auto_arima(
+                series,
+                start_p=0, start_q=0,
+                max_p=3, max_q=3,        # จำกัดขอบเขตไม่ให้เกิน 3 เพื่อให้ระบบรันไวขึ้น ไม่หน่วงแอป
+                d=None,                  # ใส่ None เพื่อให้ระบบรันการทดสอบทางสถิติ (ADF Test) หาค่า d ให้เอง
+                seasonal=False,          # กำหนดเป็น False เพราะการเสื่อมสภาพของวัสดุไม่มีเรื่อง "ฤดูกาล (Seasonality)" แบบยอดขาย
+                stepwise=True,           # ใช้ Stepwise Algorithm ช่วยให้หาค่าได้เร็วขึ้นมาก
+                suppress_warnings=True,  # ซ่อนแจ้งเตือนยิบย่อย
+                error_action="ignore"
+            )
+            
+            # พยากรณ์ไปข้างหน้า
+            forecast = auto_model.predict(n_periods=steps)
+            
+            # ดึงค่า p, d, q ที่ระบบเลือกมาเก็บไว้โชว์ (เพื่อเอาไปเขียนใน Report ได้)
+            best_order = auto_model.order 
+            info = f"Auto-ARIMA {best_order}"
+        except Exception as e:
+            # Fallback: แผนสำรอง กรณีข้อมูลช่วงนั้นนิ่งสนิทจนทำ Differencing ไม่ได้            
             model = ARIMA(series, order=(0, 1, 0))
             fit = model.fit()
             forecast = fit.forecast(steps)
-            info = "ARIMA(0,1,0) [fallback]"
-            
+            info = "ARIMA(0,1,0) [fallback]"            
     return forecast.values, info
 
 
@@ -120,24 +133,22 @@ st.divider()
 
 # ─── Section 2: Forecasting ─────────────────────────────────────────────────
 st.markdown("## 🔮 Forecasting")
-st.markdown(
-    """
-    **วิธีการ Forecasting ที่ใช้ในวงการวัสดุศาสตร์และสีวิทยา:**
-    - **Holt-Winters Exponential Smoothing** — มาตรฐานสำหรับข้อมูล time-series ที่มี trend  
-      *(ISO/ASTM color measurement, paint & coating industry)*
-    - **ARIMA** — ใช้กว้างขวางในงานวิจัย degradation / aging ของวัสดุ  
-      *(งานวิจัยวัสดุศาสตร์, color stability studies)*"""
-)
 
 with st.sidebar:
     # --- Controls ---
-    col1, col2 = st.columns(2)
-    with col1:
-        forecast_steps = st.slider("⏩ Forecasting Target (sec)", 1, 60, 6)
-    with col2:
-        method = st.selectbox("📐 Forecasting Method",["Holt-Winters (Exponential Smoothing)", "ARIMA"],index=0)
+    st.header("⚙️ Forecasting Settings")
+    # st.markdown("""
+    #     **วิธีการ Forecasting ที่มีให้ใช้:**
+    #     - **Holt-Winters Exponential Smoothing** — มาตรฐานสำหรับข้อมูล time-series ที่มี trend  
+    #     *(ISO/ASTM color measurement, paint & coating industry)*
+    #     - **ARIMA** — ใช้กว้างขวางในงานวิจัย degradation / aging ของวัสดุ  
+    #     *(งานวิจัยวัสดุศาสตร์, color stability studies)*"""
+    # )
+
+    forecast_steps = st.slider("⏩ Forecasting Target (sec)", 1, 60, 6)
+    method = st.selectbox("📐 Forecasting Method",["Holt-Winters (Exponential Smoothing)", "ARIMA"],index=0)
     selected_cols = st.multiselect(
-        "📊 เลือกตัวแปรที่ต้องการ",
+        "📊 Variables to Forecast",
         FORECAST_COLUMNS,
         default=['diffuse_avg_r', 'diffuse_avg_g', 'diffuse_avg_b', 'dE']
     )
@@ -151,7 +162,6 @@ last_sec   = df.index[-1]
 future_idx = [last_sec + (i + 1) for i in range(forecast_steps)]
 full_idx   = list(df.index) + future_idx
 
-
 # ─── Run forecasts & plot ────────────────────────────────────────────────────
 metrics_rows = []
 
@@ -163,22 +173,34 @@ for col in selected_cols:
         st.warning(f"⚠️ {COLUMN_LABELS.get(col)}: ข้อมูลไม่เพียงพอสำหรับการพยากรณ์")
         continue
 
+    # 1. พยากรณ์อนาคตของจริง (ใช้ข้อมูล 100% เต็ม)
     fcast_vals, model_info = forecast_series(series, forecast_steps, method)
     # Store forecasted values in output dict for table
     forecast_dict[COLUMN_LABELS.get(col)] = np.round(fcast_vals, 4)
 
-    # In-sample fitted values for metrics (use last n points)
+    # 2. ทำ Back-testing ด้วยข้อมูล 30% สุดท้าย เพื่อหา MAE, RMSE, MAPE
     try:
-        _, fitted_info = forecast_series(series[:-1], 1, method)
-        fitted_last, _ = forecast_series(series[:-2], 1, method) if len(series) > 2 else ([series.iloc[-1]], "")
-        # Simple 1-step back-test on last point
-        bt_actual    = np.array([series.iloc[-1]])
-        bt_predicted = np.array(fitted_last[:1])
-        # print(f"Debug: {col} | Actual: {bt_actual} | Predicted: {bt_predicted} | Model Info: {model_info}")
-        mae, rmse, mape = compute_metrics(bt_actual, bt_predicted)
-    except Exception:
+        # หาจุดตัด (Split Index) ที่ 70%
+        split_idx = int(len(series) * 0.7)
+        
+        train_series = series.iloc[:split_idx]
+        test_series = series.iloc[split_idx:]
+        test_steps = len(test_series)
+        
+        # ให้โมเดลเรียนรู้จากข้อมูล 70% แรก แล้วให้ลองพยากรณ์ไปข้างหน้าเท่ากับความยาวของช่วง 30%
+        bt_predicted, _ = forecast_series(train_series, test_steps, method)
+        
+        bt_actual = test_series.values
+        bt_predicted = np.array(bt_predicted)
+        
+        # ป้องกันกรณีเกิด Error จากความยาวของ Array ไม่เท่ากัน
+        if len(bt_actual) == len(bt_predicted):
+            mae, rmse, mape = compute_metrics(bt_actual, bt_predicted)
+        else:
+            mae, rmse, mape = float('nan'), float('nan'), float('nan')
+    except Exception as e:
         mae, rmse, mape = float('nan'), float('nan'), float('nan')
-
+        
     metrics_rows.append({
         "Variable":  COLUMN_LABELS.get(col),
         "Method":    method.split(" ")[0],
@@ -240,9 +262,9 @@ for col in selected_cols:
 if metrics_rows:
     st.divider()
     st.markdown("### 📐 Forecast Accuracy Metrics \n"
-        "- **MAE** (Mean Absolute Error) — ค่าเฉลี่ยของความผิดพลาดสัมบูรณ์  \n"
-        "- **RMSE** (Root Mean Squared Error) — ให้น้ำหนักกับความผิดพลาดขนาดใหญ่  \n"
-        "- **MAPE** (Mean Absolute Percentage Error) — ความผิดพลาดในรูปเปอร์เซ็นต์"
+        "- **MAE** (Mean Absolute Error)\n"
+        "- **RMSE** (Root Mean Squared Error)\n"
+        "- **MAPE** (Mean Absolute Percentage Error)"
     )
     metrics_df = pd.DataFrame(metrics_rows).set_index("Variable")
     st.dataframe(metrics_df, width='stretch')
