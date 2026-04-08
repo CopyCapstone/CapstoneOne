@@ -20,13 +20,12 @@ st.divider()
 # ตรวจสอบว่ามีคอลัมน์ 'sec' หรือไม่
 if 'sec' in df.columns:
     df = df.set_index('sec') # ตั้งค่าให้ sec เป็นแกน X
-    forecast_steps = st.slider("เลือกเวลาที่ต้องการพยากรณ์ล่วงหน้า (วินาที / Sec)", min_value=0, max_value=60, value=10)
+    forecast_steps = st.slider("เลือกเวลาที่ต้องการพยากรณ์ล่วงหน้า (วินาที)", min_value=0, max_value=60, value=10)
 
     # ==========================================
     # ส่วนของ FORECASTING
     # ==========================================
-    st.header("🔮 Forecasting (พยากรณ์แนวโน้มในอนาคต)")
-    st.info("ใช้อัลกอริทึม **Holt's Linear Trend (Exponential Smoothing)** ข้อมูลจริงจะเป็น **สีเข้ม** ส่วนข้อมูลพยากรณ์จะเป็น **สีสว่าง**")
+    st.info("ใช้อัลกอริทึม **Holt's Linear Trend (Exponential Smoothing)**")
 
     target_cols = [
         'diffuse_avg_r', 'diffuse_avg_g', 'diffuse_avg_b',
