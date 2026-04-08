@@ -17,6 +17,8 @@ PROJECT_ROOT = Path(__file__).parent.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 SETTING_FILE = TMP_DIR / 'settings.json'
 VIDEO_PATH = TMP_DIR/ "uploaded_video" / "uploaded_video.mp4"
+OUTPUT_CSV_PATH = TMP_DIR / "dataframe" / "batch_processing_results.csv"
+os.makedirs(OUTPUT_CSV_PATH.parent, exist_ok=True)
 
 def load_config():
     if os.path.exists(SETTING_FILE):
@@ -199,9 +201,15 @@ if os.path.exists(str(VIDEO_PATH)):
                         new_row_data = [{
                             'sec': sec, 
                             'frame_index': frame_id, 
-                            'diffuse_rgb_avg':average_RGB_diffuse,
-                            'predict_CIELAB':[pred_L,pred_a,pred_b],
-                            'specular_rgb_avg': average_RGB_specular,
+                            'diffuse_avg_r':average_RGB_diffuse[0],
+                            'diffuse_avg_g':average_RGB_diffuse[1],
+                            'diffuse_avg_b':average_RGB_diffuse[2],
+                            'predict_CIELAB_L':pred_L,
+                            'predict_CIELAB_a':pred_a,
+                            'predict_CIELAB_b':pred_b,
+                            'specular_avg_r': average_RGB_specular[0],
+                            'specular_avg_g': average_RGB_specular[1],
+                            'specular_avg_b': average_RGB_specular[2],
                             'gloss_percent': gloss_percent,
                             'dE': dE_val # ใส่ค่าที่คำนวณได้ลงไป
                         }]
@@ -214,7 +222,8 @@ if os.path.exists(str(VIDEO_PATH)):
                 else:
                     break
 
-            st.sidebar.success("✅ ประมวลผลเสร็จสิ้น!")            
+            st.sidebar.success("✅ ประมวลผลเสร็จสิ้น!")   
+            data.to_csv(str(OUTPUT_CSV_PATH), index=False)         
             cap.release()
             
 else:

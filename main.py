@@ -8,8 +8,10 @@ Module2 = st.Page("pages/Module2.py", title = "2) Chromatic Adaptation Transform
 Module3 = st.Page("pages/Module3&5.py", title = "3) Pixel Segmentation & Glossiness Measurement", icon = "📚")
 Module4 = st.Page("pages/Module4&6.py", title = "4) Color Measurement & Visualization", icon = "🤖")
 Module7 = st.Page("pages/Module7&8.py", title = "5) Batch Processing & Data Aggregation", icon = "🔥")
+Module9 = st.Page("pages/Module9&10.py", title = "6) Forecasting & Visualization", icon = "📊")
+
 # นำหน้าเพจทั้งหมดไปใส่ใน navigation
-pg = st.navigation([Module1,Module2,Module3,Module4,Module7])
+pg = st.navigation([Module1,Module2,Module3,Module4,Module7,Module9])
 
 # สั่งรันการนำทาง
 pg.run()
