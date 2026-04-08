@@ -114,7 +114,7 @@ st.markdown("### 📈 Color Difference (ΔE)")
 st.line_chart(df[['dE']])
 
 st.markdown("### 📋 ตารางข้อมูลดิบ (Raw Data)")
-st.dataframe(df)
+st.dataframe(df, width='stretch')
 
 st.divider()
 
@@ -155,6 +155,8 @@ full_idx   = list(df.index) + future_idx
 # ─── Run forecasts & plot ────────────────────────────────────────────────────
 metrics_rows = []
 
+forecast_dict = {"sec (forecast)": future_idx}
+
 for col in selected_cols:
     series = df[col].dropna()
     if len(series) < 2:
@@ -162,6 +164,8 @@ for col in selected_cols:
         continue
 
     fcast_vals, model_info = forecast_series(series, forecast_steps, method)
+    # Store forecasted values in output dict for table
+    forecast_dict[COLUMN_LABELS.get(col)] = np.round(fcast_vals, 4)
 
     # In-sample fitted values for metrics (use last n points)
     try:
@@ -170,7 +174,7 @@ for col in selected_cols:
         # Simple 1-step back-test on last point
         bt_actual    = np.array([series.iloc[-1]])
         bt_predicted = np.array(fitted_last[:1])
-        print(f"Debug: {col} | Actual: {bt_actual} | Predicted: {bt_predicted} | Model Info: {model_info}")
+        # print(f"Debug: {col} | Actual: {bt_actual} | Predicted: {bt_predicted} | Model Info: {model_info}")
         mae, rmse, mape = compute_metrics(bt_actual, bt_predicted)
     except Exception:
         mae, rmse, mape = float('nan'), float('nan'), float('nan')
@@ -235,8 +239,7 @@ for col in selected_cols:
 # ─── Metrics Table ───────────────────────────────────────────────────────────
 if metrics_rows:
     st.divider()
-    st.markdown("### 📐 Forecast Accuracy Metrics")
-    st.markdown(
+    st.markdown("### 📐 Forecast Accuracy Metrics \n"
         "- **MAE** (Mean Absolute Error) — ค่าเฉลี่ยของความผิดพลาดสัมบูรณ์  \n"
         "- **RMSE** (Root Mean Squared Error) — ให้น้ำหนักกับความผิดพลาดขนาดใหญ่  \n"
         "- **MAPE** (Mean Absolute Percentage Error) — ความผิดพลาดในรูปเปอร์เซ็นต์"
@@ -246,22 +249,13 @@ if metrics_rows:
 
 # ─── Forecast Table ──────────────────────────────────────────────────────────
 st.divider()
-st.markdown("### 📋 ตารางผลการพยากรณ์ (Forecasted Values)")
-
-forecast_dict = {"sec (forecast)": future_idx}
-for col in selected_cols:
-    series = df[col].dropna()
-    if len(series) < 2:
-        continue
-    fcast_vals, _ = forecast_series(series, forecast_steps, method)
-    forecast_dict[COLUMN_LABELS.get(col)] = np.round(fcast_vals, 4)
-
+st.markdown("### 📋 Forecasted Table")
 forecast_out_df = pd.DataFrame(forecast_dict).set_index("sec (forecast)")
 st.dataframe(forecast_out_df, width='stretch')
 
 csv_bytes = forecast_out_df.to_csv().encode("utf-8")
 st.download_button(
-    label="⬇️ ดาวน์โหลดผลพยากรณ์ (CSV)",
+    label="⬇️ Download Forecasted Table (CSV)",
     data=csv_bytes,
     file_name="forecast_results.csv",
     mime="text/csv"
