@@ -145,10 +145,10 @@ with st.sidebar:
     #     *(งานวิจัยวัสดุศาสตร์, color stability studies)*"""
     # )
 
-    forecast_steps = st.slider("⏩ Forecasting Target (sec)", 1, 60, 6)
-    method = st.selectbox("📐 Forecasting Method",["Holt-Winters (Exponential Smoothing)", "ARIMA"],index=0)
+    forecast_steps = st.slider("Forecasting Target (sec)", 1, 60, 6)
+    method = st.selectbox("Forecasting Method",["Holt-Winters (Exponential Smoothing)", "ARIMA"],index=0)
     selected_cols = st.multiselect(
-        "📊 Variables to Forecast",
+        "Variables to Forecast",
         FORECAST_COLUMNS,
         default=['diffuse_avg_r', 'diffuse_avg_g', 'diffuse_avg_b', 'dE']
     )
@@ -274,11 +274,3 @@ st.divider()
 st.markdown("### 📋 Forecasted Table")
 forecast_out_df = pd.DataFrame(forecast_dict).set_index("sec (forecast)")
 st.dataframe(forecast_out_df, width='stretch')
-
-csv_bytes = forecast_out_df.to_csv().encode("utf-8")
-st.download_button(
-    label="⬇️ Download Forecasted Table (CSV)",
-    data=csv_bytes,
-    file_name="forecast_results.csv",
-    mime="text/csv"
-)
