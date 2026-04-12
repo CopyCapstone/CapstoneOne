@@ -49,6 +49,10 @@ with st.sidebar:
     st.header("⚙️ System Settings")
     st.subheader("Current Parameters")
     st.json(config) # แสดงโครงสร้าง JSON ให้ดูแบบสวยงาม
+    # defaults project process at 1 row per second but allow user to slow down to 1 row per 10 seconds
+    step =  st.slider("Details of processing (seconds/processing)", 1, 60, 1, help="Defaults project process at 1 processing per second but allow user to slow down to 1 processing per 60 seconds.")
+    # save step to storage for use in other modules
+    st.session_state['stored_step'] = step
     st.divider()
     batchButton = st.button("GO❕❕❕", type="primary", width="stretch")
 
@@ -101,6 +105,8 @@ if os.path.exists(str(VIDEO_PATH)):
             
             ref_L, ref_a, ref_b = None, None, None
             for sec in range(total_seconds+1):
+                if sec % step != 0:
+                    continue  # ข้ามการประมวลผลถ้าวินาทีนี้ไม่ใช่ช่วงที่กำหนดไว้ใน slider
                 # คำนวณหา index ของเฟรมที่อยู่ที่วินาทีนั้นๆ
                 frame_id = int(sec * video_fps)
                 # สั่งให้ OpenCV กระโดดไปที่เฟรมนั้น
@@ -222,7 +228,7 @@ if os.path.exists(str(VIDEO_PATH)):
                 else:
                     break
 
-            st.sidebar.success("✅ ประมวลผลเสร็จสิ้น!")   
+            st.sidebar.success("✅ Processing completed!")   
             data.to_csv(str(OUTPUT_CSV_PATH), index=False)         
             cap.release()
             
