@@ -59,7 +59,7 @@ def forecast_series(series: pd.Series, steps: int):
     model = ExponentialSmoothing(series, trend=trend, seasonal=None,initialization_method="estimated")
     fit = model.fit(optimized=True)
     forecast = fit.forecast(steps)
-    info = (f"Holt-Winters | trend={'additive' if trend else 'none'}" "|" f"α={fit.params.get('smoothing_level', float('nan')):.4f}" "|" f"β={fit.params.get('smoothing_trend', float('nan')):.4f}" )
+    info = (f"Holt-Winters" " | " f"α={fit.params.get('smoothing_level', float('nan')):.4f}" " | " f"β={fit.params.get('smoothing_trend', float('nan')):.4f}" )
     return forecast.values, info
 
 
@@ -97,6 +97,116 @@ st.divider()
 
 # ─── Section 2: Forecasting ─────────────────────────────────────────────────
 st.markdown("## 🔮 Forecasting")
+# --- ส่วนทฤษฎี ---
+with st.expander("อธิบาย Holt-Winters Exponential Smoothing ดูสมการที่ใช้คำนวณ เฉพาะส่วน Level (α) และ Trend (β)"):
+    st.write("### 1. สมการระดับ (Level - $L_t$)")
+    st.latex(r"L_t = \alpha Y_t + (1 - \alpha)(L_{t-1} + T_{t-1})")
+    
+    st.write("### 2. สมการแนวโน้ม (Trend - $T_t$)")
+    st.latex(r"T_t = \beta(L_t - L_{t-1}) + (1 - \beta)T_{t-1}")
+    
+    st.write("### 3. การพยากรณ์ไปข้างหน้า (Forecast - $F_{t+m}$)")
+    st.latex(r"F_{t+m} = L_t + (m \times T_t)")
+
+    # --- Sidebar สำหรับปรับค่า Parameter ---
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("🕹️ ปรับแต่งค่า Parameters")
+        alpha = st.slider("ค่า Alpha (α) - สำหรับ Level", 0.0, 1.0, 0.5, 0.05)
+        beta = st.slider("ค่า Beta (β) - สำหรับ Trend", 0.0, 1.0, 0.5, 0.05)
+    with col2:
+        st.subheader("🔍 **วิเคราะห์ผล:**")
+        st.write(f"- ขณะนี้ใช้ **$\\alpha = {alpha}$**: {'ให้ความสำคัญกับข้อมูลใหม่สูง' if alpha > 0.7 else 'เน้นความเรียบของข้อมูล' if alpha < 0.3 else 'สมดุลระหว่างข้อมูลเก่าและใหม่'}")
+        st.write(f"- ขณะนี้ใช้ **$\\beta = {beta}$**: {'ปรับตัวตาม Trend ได้ไวมาก' if beta > 0.7 else 'Trend ค่อนข้างคงที่' if beta < 0.3 else 'ปรับตัวตามแนวโน้มปานกลาง'}")
+
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("⚙️ ค่าเริ่มต้น (Initial Values)")
+        l0 = st.number_input("ค่าระดับเริ่มต้น (L0)", value=100.0)
+        t0 = st.number_input("ค่าแนวโน้มเริ่มต้น (T0)", value=2.0)
+    with col2:
+        st.subheader("📊 **ข้อมูลตัวอย่าง:**")
+        actual_data_str = st.text_input("ค่าจริง (Yt) แยกด้วยเครื่องหมายคอมมา", "110, 115")
+        Y_actual = [float(x.strip()) for x in actual_data_str.split(",")]
+        forecast_steps = st.number_input("จำนวนงวดที่พยากรณ์ล่วงหน้า", 1, 10, 2)
+
+    # --- ส่วนการคำนวณ ---
+    results = []
+    # ค่าที่ t=0
+    current_L = l0
+    current_T = t0
+    results.append({
+        "Time (t)": 0,
+        "Actual (Yt)": None,
+        "Level (Lt)": current_L,
+        "Trend (Tt)": current_T,
+        "Forecast (Ft)": None,
+        "Type": "Initial"
+    })
+
+    # คำนวณช่วงที่มีค่าจริง (Historical)
+    for t, y_val in enumerate(Y_actual, 1):
+        # Forecast สำหรับ t ปัจจุบัน (ใช้ค่าจาก t-1)
+        prev_L = results[t-1]["Level (Lt)"]
+        prev_T = results[t-1]["Trend (Tt)"]
+        f_t = prev_L + prev_T
+        
+        # คำนวณ Level และ Trend ใหม่
+        new_L = alpha * y_val + (1 - alpha) * (prev_L + prev_T)
+        new_T = beta * (new_L - prev_L) + (1 - beta) * prev_T
+        
+        results.append({
+            "Time (t)": t,
+            "Actual (Yt)": y_val,
+            "Level (Lt)": round(new_L, 4),
+            "Trend (Tt)": round(new_T, 4),
+            "Forecast (Ft)": round(f_t, 4),
+            "Type": "Historical"
+        })
+        current_L, current_T = new_L, new_T
+
+    # คำนวณช่วงอนาคต (Future Forecast)
+    last_t = len(Y_actual)
+    for m in range(1, forecast_steps + 1):
+        f_future = current_L + (m * current_T)
+        results.append({
+            "Time (t)": last_t + m,
+            "Actual (Yt)": None,
+            "Level (Lt)": None,
+            "Trend (Tt)": None,
+            "Forecast (Ft)": round(f_future, 4),
+            "Type": "Forecast"
+        })
+
+    tmp_df = pd.DataFrame(results)
+
+    # --- ส่วนแสดงผล ---
+    col1, col2 = st.columns([1.5, 1.2])
+
+    with col1:
+        st.write("### 📊 ตารางเปรียบเทียบ")
+        st.dataframe(tmp_df.style.highlight_null(color="#f0f0f0"), width='stretch', hide_index = True)
+
+    with col2:
+        st.write("### 📈 กราฟแสดงผล")
+        fig = go.Figure()
+
+        # เส้นค่าจริง
+        fig.add_trace(go.Scatter(x=tmp_df["Time (t)"], y=tmp_df["Actual (Yt)"], 
+                                mode='lines+markers', name='ค่าจริง (Actual)',
+                                line=dict(color='blue', width=3)))
+
+        # เส้นค่าพยากรณ์
+        fig.add_trace(go.Scatter(x=tmp_df["Time (t)"], y=tmp_df["Forecast (Ft)"], 
+                                mode='lines+markers', name='ค่าพยากรณ์ (Forecast)',
+                                line=dict(color='orange', dash='dash')))
+
+        fig.update_layout(xaxis_title="เวลา (t)", yaxis_title="ยอดขาย / ค่า",
+                        hovermode="x unified", legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+        st.plotly_chart(fig, width='stretch')
+
 
 with st.sidebar:
     # --- Controls ---
@@ -105,7 +215,6 @@ with st.sidebar:
         **วิธีการ Forecasting ที่ใช้วิธี Holt-Winters Exponential Smoothing:**
         """
     )
-
     st.markdown(f"Details of processing (seconds/processing): {st.session_state['stored_step']}")
     forecast_steps = st.slider("Forecasting Target (seconds)", 1, 600, 6)
     st.markdown("Forecasting Method : Holt-Winters (Exponential Smoothing)")
