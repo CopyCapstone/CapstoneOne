@@ -125,11 +125,11 @@ st.divider()
 st.markdown("## 🔮 Forecasting")
 # --- ส่วนทฤษฎี ---
 with st.expander("อธิบาย Polynomial Regression"):
-    st.write("### 1. การแปลงฟีเจอร์ (Polynomial Features)")
+    st.write("### 1. Polynomial Features")
     st.write("คือการสร้าง 'ตัวแปรใหม่' จากเวลา ($x$) เดิมที่มีอยู่ เพื่อให้โมเดลสามารถสร้างเส้นโค้งได้:")
     st.latex(r"X_{transformed} = [x^0, x^1, x^2, x^3, ..., x^n]")
     
-    st.write("### 2. สมการพยากรณ์ (Linear Regression)")
+    st.write("### 2. Linear Regression")
     st.write("เมื่อเราได้ตัวแปรยกกำลังมาแล้ว โมเดลจะหาค่า beta (weights) ที่เหมาะสมที่สุด:")
     st.latex(r"y = \beta_0 + \beta_1x + \beta_2x^2 + ... + \beta_nx^n")
     
@@ -199,7 +199,7 @@ with st.expander("อธิบาย Polynomial Regression"):
     col1, col2 = st.columns([1.5, 1.2])
 
     with col1:
-        st.write("### 📊 ตารางการคำนวณ")
+        st.write("### 📊 ตารางข้อมูล")
         st.dataframe(tmp_df.style.highlight_null(color="#f0f0f0"), width='stretch', hide_index=True)
         
         # แสดงสมการที่โมเดลสร้างขึ้น
