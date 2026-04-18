@@ -4,8 +4,8 @@ import numpy as np
 import streamlit as st
 from pathlib import Path
 import plotly.graph_objects as go
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from statsmodels.tsa.arima.model import ARIMA
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import pmdarima as pm
 import warnings
@@ -48,20 +48,46 @@ COLUMN_LABELS = {
     'dE':                'ΔE (Color Diff)',
 }
 
-# ─── Helper: run one forecasting model ──────────────────────────────────────
-def forecast_series(series: pd.Series, steps: int):
+def forecast_series(series: pd.Series, steps: int, degree: int = 2):
     """
-    Returns (forecast_values, model_info_str)
-    Handles short series gracefully.
+    Uses actual time index (seconds) to forecast future intervals.
     """
-    n = len(series)
-    trend   = "add" if n >= 4 else None
-    model = ExponentialSmoothing(series, trend=trend, seasonal=None,initialization_method="estimated")
-    fit = model.fit(optimized=True)
-    forecast = fit.forecast(steps)
-    info = (f"Holt-Winters" " | " f"α={fit.params.get('smoothing_level', float('nan')):.4f}" " | " f"β={fit.params.get('smoothing_trend', float('nan')):.4f}" )
-    return forecast.values, info
+    # 1. Use the actual index (0, 60, 120...) as X
+    X = series.index.values.reshape(-1, 1)
+    y = series.values
+    # print(f"Debug: Original X (seconds) = {X.flatten().tolist()}")
+    # 2. Transform X
+    poly = PolynomialFeatures(degree=degree, include_bias=False)
+    X_poly = poly.fit_transform(X)
 
+    # 3. Fit
+    model = LinearRegression()
+    model.fit(X_poly, y)
+
+    # 4. Calculate future X values (e.g., 420, 480)
+    step_size = series.index[-1] - series.index[-2]
+    last_val = series.index[-1]
+    
+    # Generate [420, 480, ...]
+    X_future = np.array([last_val + (i + 1) * step_size for i in range(steps)]).reshape(-1, 1)
+    # print(f"Debug: Future X (seconds) = {X_future.flatten().tolist()}")
+
+    X_future_poly = poly.transform(X_future)
+    forecast_values = model.predict(X_future_poly)
+
+    # 5. Info String
+    b0 = model.intercept_
+    coeffs = model.coef_
+    
+    eq_terms = ["β0"] + [f"β{i+1}x^{i+1}" for i in range(len(coeffs))]
+    eq_str = " + ".join(eq_terms)
+    val_parts = [f"β0={b0:.2f}"] + [f"β{i+1}={val:.2e}" for i, val in enumerate(coeffs)]
+    
+    info = (f"y = {eq_str}\n"
+            f"{' | '.join(val_parts)}\n"
+            f"Forecasted Intervals (seconds): {X_future.flatten().tolist()}")
+
+    return forecast_values, info
 
 # ─── Metrics helper ─────────────────────────────────────────────────────────
 def compute_metrics(actual, predicted):
@@ -98,86 +124,73 @@ st.divider()
 # ─── Section 2: Forecasting ─────────────────────────────────────────────────
 st.markdown("## 🔮 Forecasting")
 # --- ส่วนทฤษฎี ---
-with st.expander("อธิบาย Holt-Winters Exponential Smoothing ดูสมการที่ใช้คำนวณ เฉพาะส่วน Level (α) และ Trend (β)"):
-    st.write("### 1. สมการระดับ (Level - $L_t$)")
-    st.latex(r"L_t = \alpha Y_t + (1 - \alpha)(L_{t-1} + T_{t-1})")
+with st.expander("อธิบาย Polynomial Regression"):
+    st.write("### 1. การแปลงฟีเจอร์ (Polynomial Features)")
+    st.write("คือการสร้าง 'ตัวแปรใหม่' จากเวลา ($x$) เดิมที่มีอยู่ เพื่อให้โมเดลสามารถสร้างเส้นโค้งได้:")
+    st.latex(r"X_{transformed} = [x^0, x^1, x^2, x^3, ..., x^n]")
     
-    st.write("### 2. สมการแนวโน้ม (Trend - $T_t$)")
-    st.latex(r"T_t = \beta(L_t - L_{t-1}) + (1 - \beta)T_{t-1}")
+    st.write("### 2. สมการพยากรณ์ (Linear Regression)")
+    st.write("เมื่อเราได้ตัวแปรยกกำลังมาแล้ว โมเดลจะหาค่า beta (weights) ที่เหมาะสมที่สุด:")
+    st.latex(r"y = \beta_0 + \beta_1x + \beta_2x^2 + ... + \beta_nx^n")
     
-    st.write("### 3. การพยากรณ์ไปข้างหน้า (Forecast - $F_{t+m}$)")
-    st.latex(r"F_{t+m} = L_t + (m \times T_t)")
+    st.info("""
+    💡 **หลักการง่ายๆ:** 
+    - **Degree 1:** คือเส้นตรงธรรมดา ($y = ax + b$)
+    - **Degree 2:** คือเส้นโค้งพาราโบลา (U-shape หรือคว่ำ)
+    - **Degree 3 ขึ้นไป:** เส้นจะเริ่มมีความหยักมากขึ้นตามข้อมูล
+    """)
 
     # --- Sidebar สำหรับปรับค่า Parameter ---
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("🕹️ ปรับแต่งค่า Parameters")
-        alpha = st.slider("ค่า Alpha (α) - สำหรับ Level", 0.0, 1.0, 0.5, 0.05)
-        beta = st.slider("ค่า Beta (β) - สำหรับ Trend", 0.0, 1.0, 0.5, 0.05)
+        degree = st.slider("Degree (ระดับความโค้ง)", 1, 10, 2)
+        st.caption("ยิ่ง Degree สูง เส้นจะยิ่งโค้งตามจุดข้อมูลได้มากขึ้น")
+        if degree == 1:
+            st.caption("- **โหมดเส้นตรง:** เน้นดูแนวโน้ม (Trend) ภาพรวมว่าขึ้นหรือลงแบบคงที่")
+        elif degree <= 3:
+            st.caption("- **โหมดเส้นโค้ง:** เริ่มปรับตัวตามความเร่งของข้อมูลได้มากขึ้น")
+        else:
+            st.caption("- **โหมดซับซ้อน:** ระวังการเกิด *Overfitting* (เส้นพยายามผ่านทุกจุดจนทำนายอนาคตเพี้ยน)")
+
     with col2:
-        st.subheader("🔍 **วิเคราะห์ผล:**")
-        st.write(f"- ขณะนี้ใช้ **$\\alpha = {alpha}$**: {'ให้ความสำคัญกับข้อมูลใหม่สูง' if alpha > 0.7 else 'เน้นความเรียบของข้อมูล' if alpha < 0.3 else 'สมดุลระหว่างข้อมูลเก่าและใหม่'}")
-        st.write(f"- ขณะนี้ใช้ **$\\beta = {beta}$**: {'ปรับตัวตาม Trend ได้ไวมาก' if beta > 0.7 else 'Trend ค่อนข้างคงที่' if beta < 0.3 else 'ปรับตัวตามแนวโน้มปานกลาง'}")
-
-    st.divider()
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("⚙️ ค่าเริ่มต้น (Initial Values)")
-        l0 = st.number_input("ค่าระดับเริ่มต้น (L0)", value=100.0)
-        t0 = st.number_input("ค่าแนวโน้มเริ่มต้น (T0)", value=2.0)
-    with col2:
-        st.subheader("📊 **ข้อมูลตัวอย่าง:**")
-        actual_data_str = st.text_input("ค่าจริง (Yt) แยกด้วยเครื่องหมายคอมมา", "110, 115")
-        Y_actual = [float(x.strip()) for x in actual_data_str.split(",")]
-        forecast_steps = st.number_input("จำนวนงวดที่พยากรณ์ล่วงหน้า", 1, 10, 2)
-
-    # --- ส่วนการคำนวณ ---
-    results = []
-    # ค่าที่ t=0
-    current_L = l0
-    current_T = t0
-    results.append({
-        "Time (t)": 0,
-        "Actual (Yt)": None,
-        "Level (Lt)": current_L,
-        "Trend (Tt)": current_T,
-        "Forecast (Ft)": None,
-        "Type": "Initial"
-    })
-
-    # คำนวณช่วงที่มีค่าจริง (Historical)
-    for t, y_val in enumerate(Y_actual, 1):
-        # Forecast สำหรับ t ปัจจุบัน (ใช้ค่าจาก t-1)
-        prev_L = results[t-1]["Level (Lt)"]
-        prev_T = results[t-1]["Trend (Tt)"]
-        f_t = prev_L + prev_T
+        st.subheader("⚙️ ตั้งค่าข้อมูล")
+        # ปรับปรุง input ให้รองรับข้อมูลที่สะท้อนความโค้ง
+        actual_data_str = st.text_input("Actual Data (Yt) แยกด้วยเครื่องหมายคอมมา", "0, 1, 1, 2, 3, 5, 8, 13, 21, 34")
+        forecast_steps = st.number_input("forecast_steps", 1, 10, 3)
         
-        # คำนวณ Level และ Trend ใหม่
-        new_L = alpha * y_val + (1 - alpha) * (prev_L + prev_T)
-        new_T = beta * (new_L - prev_L) + (1 - beta) * prev_T
+    st.divider()
+
+    # --- ส่วนการคำนวณ (ใช้ Logic ของ Sklearn) ---
+    Y_actual = [float(x.strip()) for x in actual_data_str.split(",")]
+    n = len(Y_actual)
+
+    X = np.arange(n).reshape(-1, 1)
+    y = np.array(Y_actual)
+
+    # 2. สร้าง Features และ Fit Model
+    poly = PolynomialFeatures(degree=degree, include_bias=True)
+    X_poly = poly.fit_transform(X)
+    model = LinearRegression()
+    model.fit(X_poly, y)
+
+    # 3. สร้างข้อมูลสำหรับการแสดงผล (Historical + Forecast)
+    X_all = np.arange(n + forecast_steps).reshape(-1, 1)
+    X_all_poly = poly.transform(X_all)
+    y_all_pred = model.predict(X_all_poly)
+
+    # เตรียม DataFrame สำหรับตาราง
+    results = []
+    for t in range(n + forecast_steps):
+        actual = Y_actual[t] if t < n else None
+        pred = y_all_pred[t]
         
         results.append({
             "Time (t)": t,
-            "Actual (Yt)": y_val,
-            "Level (Lt)": round(new_L, 4),
-            "Trend (Tt)": round(new_T, 4),
-            "Forecast (Ft)": round(f_t, 4),
-            "Type": "Historical"
-        })
-        current_L, current_T = new_L, new_T
-
-    # คำนวณช่วงอนาคต (Future Forecast)
-    last_t = len(Y_actual)
-    for m in range(1, forecast_steps + 1):
-        f_future = current_L + (m * current_T)
-        results.append({
-            "Time (t)": last_t + m,
-            "Actual (Yt)": None,
-            "Level (Lt)": None,
-            "Trend (Tt)": None,
-            "Forecast (Ft)": round(f_future, 4),
-            "Type": "Forecast"
+            "Actual (Yt)": actual,
+            "Forecast (Ft)": round(pred, 4),
+            "Type": "Historical" if t < n else "Forecast"
         })
 
     tmp_df = pd.DataFrame(results)
@@ -186,8 +199,19 @@ with st.expander("อธิบาย Holt-Winters Exponential Smoothing ดู�
     col1, col2 = st.columns([1.5, 1.2])
 
     with col1:
-        st.write("### 📊 ตารางเปรียบเทียบ")
-        st.dataframe(tmp_df.style.highlight_null(color="#f0f0f0"), width='stretch', hide_index = True)
+        st.write("### 📊 ตารางการคำนวณ")
+        st.dataframe(tmp_df.style.highlight_null(color="#f0f0f0"), width='stretch', hide_index=True)
+        
+        # แสดงสมการที่โมเดลสร้างขึ้น
+        b0 = model.intercept_
+        coeffs = model.coef_ # Note: b0 จะอยู่ใน intercept_ ถ้า include_bias=True ใน poly อาจต้องระวัง
+        # เพื่อความชัดเจนในการสอน:
+        eq_text = f"y = {model.intercept_:.2f}"
+        for i, c in enumerate(model.coef_[1:], 1):
+            eq_text += f" + ({c:.4f} \cdot x^{i})"
+        st.latex(eq_text)
+        # R-squared
+        st.latex(r"R^2 = {:.4f}".format(model.score(X_poly, y)))
 
     with col2:
         st.write("### 📈 กราฟแสดงผล")
@@ -195,18 +219,17 @@ with st.expander("อธิบาย Holt-Winters Exponential Smoothing ดู�
 
         # เส้นค่าจริง
         fig.add_trace(go.Scatter(x=tmp_df["Time (t)"], y=tmp_df["Actual (Yt)"], 
-                                mode='lines+markers', name='ค่าจริง (Actual)',
-                                line=dict(color='blue', width=3)))
+                                mode='markers', name='ค่าจริง (Actual)',
+                                marker=dict(color='blue', size=10)))
 
-        # เส้นค่าพยากรณ์
+        # เส้นพยากรณ์ (ลากผ่านทั้งอดีตและอนาคตเพื่อให้เห็น Regression Line)
         fig.add_trace(go.Scatter(x=tmp_df["Time (t)"], y=tmp_df["Forecast (Ft)"], 
-                                mode='lines+markers', name='ค่าพยากรณ์ (Forecast)',
+                                mode='lines+markers', name='Polynomial Fit',
                                 line=dict(color='orange', dash='dash')))
 
-        fig.update_layout(xaxis_title="เวลา (t)", yaxis_title="ยอดขาย / ค่า",
+        fig.update_layout(xaxis_title="เวลา (t)", yaxis_title="ค่าที่ได้",
                         hovermode="x unified", legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
-        st.plotly_chart(fig, width='stretch')
-
+        st.plotly_chart(fig)
 
 with st.sidebar:
     # --- Controls ---
@@ -217,6 +240,7 @@ with st.sidebar:
     )
     st.markdown(f"Details of processing (seconds/processing): {st.session_state['stored_step']}")
     forecast_steps = st.slider("Forecasting Target (seconds)", 1, 600, 6)
+    degree = st.slider("Degree of Forecasting Equation", 1, 10, 2)
     st.markdown("Forecasting Method : Holt-Winters (Exponential Smoothing)")
     selected_cols = st.multiselect(
         "Variables to Forecast",
@@ -248,7 +272,7 @@ for col in selected_cols:
         continue
 
     # 1. พยากรณ์อนาคตของจริง (ใช้ข้อมูล 100% เต็ม)
-    fcast_vals, model_info = forecast_series(series, forecast_iterations)
+    fcast_vals, model_info = forecast_series(series, forecast_iterations, degree=degree)
     # Store forecasted values in output dict for table
     forecast_dict[COLUMN_LABELS.get(col)] = np.round(fcast_vals, 2)
 
@@ -262,7 +286,7 @@ for col in selected_cols:
         test_steps = len(test_series)
         
         # ให้โมเดลเรียนรู้จากข้อมูล 70% แรก แล้วให้ลองพยากรณ์ไปข้างหน้าเท่ากับความยาวของช่วง 30%
-        bt_predicted, _ = forecast_series(train_series, test_steps)
+        bt_predicted, _ = forecast_series(train_series, test_steps, degree=degree)
         
         bt_actual = test_series.values
         bt_predicted = np.array(bt_predicted)
