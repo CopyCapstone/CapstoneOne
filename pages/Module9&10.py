@@ -235,13 +235,12 @@ with st.sidebar:
     # --- Controls ---
     st.header("⚙️ Forecasting Settings")
     st.markdown("""
-        **วิธีการ Forecasting ที่ใช้วิธี Holt-Winters Exponential Smoothing:**
+        **Forecasting Method : Polynomial Regression:**
         """
     )
     st.markdown(f"Details of processing (seconds/processing): {st.session_state['stored_step']}")
     forecast_steps = st.slider("Forecasting Target (seconds)", 1, 600, 6)
     degree = st.slider("Degree of Forecasting Equation", 1, 10, 2)
-    st.markdown("Forecasting Method : Holt-Winters (Exponential Smoothing)")
     selected_cols = st.multiselect(
         "Variables to Forecast",
         FORECAST_COLUMNS,
@@ -301,7 +300,7 @@ for col in selected_cols:
         
     metrics_rows.append({
         "Variable":  COLUMN_LABELS.get(col),
-        "Method":    "Holt-Winters (Exponential Smoothing)",
+        "Method":    "Polynomial Regression",
         "MAE":     round(mae, 2),
         "RMSE":    round(rmse, 2),
         "MAPE (%)": round(mape, 2) if not np.isnan(mape) else "N/A",
@@ -348,7 +347,7 @@ for col in selected_cols:
     fig.add_vline(x=last_sec, line_dash="dot", line_color="gray", annotation_text="Last Observed", annotation_position="top right")
 
     fig.update_layout(
-        title=f"{COLUMN_LABELS.get(col)}  |  Holt-Winters (Exponential Smoothing)",
+        title=f"{COLUMN_LABELS.get(col)}  |  Polynomial Regression",
         xaxis_title="Time (sec)",
         yaxis_title=COLUMN_LABELS.get(col),
         legend=dict(orientation="h", yanchor="bottom", y=1, xanchor="right", x=1),
