@@ -157,7 +157,7 @@ with st.expander("อธิบาย Polynomial Regression"):
     with col2:
         st.subheader("⚙️ ตั้งค่าข้อมูล")
         # ปรับปรุง input ให้รองรับข้อมูลที่สะท้อนความโค้ง
-        actual_data_str = st.text_input("Actual Data (Yt) แยกด้วยเครื่องหมายคอมมา", "0, 1, 1, 2, 3, 5, 8, 13, 21, 34")
+        actual_data_str = st.text_input("Actual Data (Yt) แยกด้วยเครื่องหมายคอมมา", "0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181")
         forecast_steps = st.number_input("forecast_steps", 1, 10, 3)
         
     st.divider()
