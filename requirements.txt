@@ -6,3 +6,5 @@ scikit-learn
 colour-science
 scikit-image
 tensorflow
+plotly
+pmdarima
