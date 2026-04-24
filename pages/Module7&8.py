@@ -63,7 +63,7 @@ try:
 
     # โหลดโมเดล
     try:
-        model = tf.keras.models.load_model('my_model.keras')
+        model = tf.keras.models.load_model('CIELab_Model.keras')
     except Exception as e:
         st.error(f"Error loading or predicting: {e}") 
 

@@ -34,7 +34,7 @@ try:
         st.metric(label="Specular Replaced by Mean Diffuse", value=f"RGB: {RGB_mean}")
         # 1. โหลดโมเดล
         try:
-            model = tf.keras.models.load_model('my_model.keras')
+            model = tf.keras.models.load_model('CIELab_Model.keras')
             # 2. เตรียมข้อมูล Input
             # RGB_mean มาในรูปแบบ [R, G, B]
             input_data = prepare_input(RGB_mean)
