@@ -19,6 +19,8 @@ VIDEO_PATH = TMP_DIR / "uploaded_video" / "uploaded_video.mp4"
 DATA_CSV_PATH = TMP_DIR / "dataframe" / "batch_processing_results.csv"
 FORECAST_OUTPUT_CSV_PATH = TMP_DIR / "dataframe" / "forecast_results.csv"
 MIN_DEGREE, MAX_DEGREE = 1, 5
+LONGGEST_FORECAST = 600 # วินาที (10 นาที)
+
 try:
     os.makedirs(DATA_CSV_PATH.parent, exist_ok=True)
     os.makedirs(FORECAST_OUTPUT_CSV_PATH.parent, exist_ok=True)
@@ -181,6 +183,8 @@ try:
             fig.update_layout(xaxis_title="เวลา (t)", yaxis_title="ค่าที่ได้",
                             hovermode="x unified", legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
             st.plotly_chart(fig)
+            
+    actual_step = np.median(np.diff(df.index)) if len(df) > 1 else 1 # การันตี step size เท่ากันทุกแถว 
 
     with st.sidebar:
         # --- Controls ---
@@ -189,8 +193,9 @@ try:
             **Forecasting Method : Polynomial Regression:**
             """
         )
-        st.markdown(f"Details of processing (seconds/processing): {np.median(np.diff(df.index))}")
-        forecast_iterations = st.slider(f"Forecasting Target (step) n*{np.median(np.diff(df.index))}", 1, 10, 1)
+        st.markdown(f"Details of processing (seconds/processing): {actual_step}")
+        forecast_iterations = st.slider(f"Forecasting Target (step) n*{actual_step}", 1, int(LONGGEST_FORECAST/actual_step), 1)
+        st.caption(f"หมายถึง Forecasting ถึง {forecast_iterations * actual_step} วินาทีข้างหน้า")
         degree = st.slider("Degree of Forecasting Equation", MIN_DEGREE, MAX_DEGREE, 2)
         selected_cols = st.multiselect(
             "Variables to Forecast",
@@ -203,7 +208,6 @@ try:
             st.stop()
 
     # Time axis
-    actual_step = np.median(np.diff(df.index)) if len(df) > 1 else 1 # การันตี step size เท่ากันทุกแถว 
     last_sec   = df.index[-1]
     future_idx = [last_sec + (i + 1) * actual_step for i in range(forecast_iterations)]
     full_idx   = list(df.index) + future_idx
@@ -332,7 +336,7 @@ try:
     st.markdown("### 📋 Forecasted Table")
     forecast_out_df = pd.DataFrame(forecast_dict).set_index("sec (forecast)")
     st.dataframe(forecast_out_df, width='stretch')
-
+    forecast_out_df.to_csv(FORECAST_OUTPUT_CSV_PATH)
 
     # ─── Metrics Table ───────────────────────────────────────────────────────────
     if metrics_rows:
