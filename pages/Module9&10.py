@@ -6,8 +6,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-import pmdarima as pm
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -18,6 +17,7 @@ SETTING_FILE = TMP_DIR / 'settings.json'
 VIDEO_PATH = TMP_DIR / "uploaded_video" / "uploaded_video.mp4"
 DATA_CSV_PATH = TMP_DIR / "dataframe" / "batch_processing_results.csv"
 FORECAST_OUTPUT_CSV_PATH = TMP_DIR / "dataframe" / "forecast_results.csv"
+MIN_DEGREE, MAX_DEGREE = 1, 5
 
 os.makedirs(DATA_CSV_PATH.parent, exist_ok=True)
 os.makedirs(FORECAST_OUTPUT_CSV_PATH.parent, exist_ok=True)
@@ -29,7 +29,7 @@ st.divider()
 
 FORECAST_COLUMNS = [
     'diffuse_avg_r', 'diffuse_avg_g', 'diffuse_avg_b',
-    'predict_CIELAB_L', 'predict_CIELAB_a', 'predict_CIELAB_b',
+    'estimated_CIELAB_L', 'estimated_CIELAB_a', 'estimated_CIELAB_b',
     'specular_avg_r', 'specular_avg_g', 'specular_avg_b',
     'gloss_percent', 'dE'
 ]
@@ -38,9 +38,9 @@ COLUMN_LABELS = {
     'diffuse_avg_r':     'Diffuse R',
     'diffuse_avg_g':     'Diffuse G',
     'diffuse_avg_b':     'Diffuse B',
-    'predict_CIELAB_L':  'CIELAB L*',
-    'predict_CIELAB_a':  'CIELAB a*',
-    'predict_CIELAB_b':  'CIELAB b*',
+    'estimated_CIELAB_L':  'CIELAB L*',
+    'estimated_CIELAB_a':  'CIELAB a*',
+    'estimated_CIELAB_b':  'CIELAB b*',
     'specular_avg_r':    'Specular R',
     'specular_avg_g':    'Specular G',
     'specular_avg_b':    'Specular B',
@@ -55,7 +55,7 @@ def forecast_series(series: pd.Series, steps: int, degree: int = 2):
     # 1. Use the actual index (0, 60, 120...) as X
     X = series.index.values.reshape(-1, 1)
     y = series.values
-    # print(f"Debug: Original X (seconds) = {X.flatten().tolist()}")
+
     # 2. Transform X
     poly = PolynomialFeatures(degree=degree, include_bias=False)
     X_poly = poly.fit_transform(X)
@@ -65,16 +65,17 @@ def forecast_series(series: pd.Series, steps: int, degree: int = 2):
     model.fit(X_poly, y)
 
     # 4. Calculate future X values (e.g., 420, 480)
-    step_size = series.index[-1] - series.index[-2]
+    step_size = np.median(np.diff(series.index)) # การัน step size เท่ากันทุกแถว
     last_val = series.index[-1]
     
     # Generate [420, 480, ...]
     X_future = np.array([last_val + (i + 1) * step_size for i in range(steps)]).reshape(-1, 1)
-    # print(f"Debug: Future X (seconds) = {X_future.flatten().tolist()}")
 
-    X_future_poly = poly.transform(X_future)
-    forecast_values = model.predict(X_future_poly)
-
+    X_full = np.vstack([X, X_future])
+    X_full_poly = poly.transform(X_full)
+    full_forecast_values = model.predict(X_full_poly)
+    forecast_values = full_forecast_values[-steps:] # Get only the forecasted values
+        
     # 5. Info String
     b0 = model.intercept_
     coeffs = model.coef_
@@ -83,17 +84,15 @@ def forecast_series(series: pd.Series, steps: int, degree: int = 2):
     eq_str = " + ".join(eq_terms)
     val_parts = [f"β0={b0:.2f}"] + [f"β{i+1}={val:.2e}" for i, val in enumerate(coeffs)]
     
-    info = (f"y = {eq_str}\n"
-            f"{' | '.join(val_parts)}\n"
-            f"Forecasted Intervals (seconds): {X_future.flatten().tolist()}")
-
-    return forecast_values, info
+    info = (f"y = {eq_str}\n" f"{' | '.join(val_parts)}\n") # f"Forecasted Intervals (seconds): {X_future.flatten().tolist()}
+    
+    return full_forecast_values, forecast_values, info
 
 # ─── Metrics helper ─────────────────────────────────────────────────────────
 def compute_metrics(actual, predicted):
     mae  = mean_absolute_error(actual, predicted)
     rmse = np.sqrt(mean_squared_error(actual, predicted))
-    mask = actual != 0
+    mask = np.abs(actual) > 1e-8
     mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if mask.any() else float('nan')
     return mae, rmse, mape
 
@@ -111,7 +110,7 @@ st.markdown("### 🔴🟢🔵 Diffuse RGB Values")
 st.line_chart(df[['diffuse_avg_r', 'diffuse_avg_g', 'diffuse_avg_b']],
               color=['#FF0000', '#00CC00', '#0000FF'])
 st.markdown("### 🎨 Estimated CIELAB")
-st.line_chart(df[['predict_CIELAB_L', 'predict_CIELAB_a', 'predict_CIELAB_b']],
+st.line_chart(df[['estimated_CIELAB_L', 'estimated_CIELAB_a', 'estimated_CIELAB_b']],
               color=['#888888', '#FF0000', '#DDCC00'])
 st.markdown("### ✨ Specular RGB Values and Gloss Percent")
 st.scatter_chart(df,y=['specular_avg_r', 'specular_avg_g', 'specular_avg_b'],color=['#FF0000', '#00CC00', '#0000FF'],size='gloss_percent')
@@ -145,11 +144,11 @@ with st.expander("อธิบาย Polynomial Regression"):
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("🕹️ ปรับแต่งค่า Parameters")
-        degree = st.slider("Degree (ระดับความโค้ง)", 1, 10, 2)
+        dump_degree = st.slider("Degree (ระดับความโค้ง)", MIN_DEGREE, MAX_DEGREE, 2)
         st.caption("ยิ่ง Degree สูง เส้นจะยิ่งโค้งตามจุดข้อมูลได้มากขึ้น")
-        if degree == 1:
+        if dump_degree == 1:
             st.caption("- **โหมดเส้นตรง:** เน้นดูแนวโน้ม (Trend) ภาพรวมว่าขึ้นหรือลงแบบคงที่")
-        elif degree <= 3:
+        elif dump_degree <= 3:
             st.caption("- **โหมดเส้นโค้ง:** เริ่มปรับตัวตามความเร่งของข้อมูลได้มากขึ้น")
         else:
             st.caption("- **โหมดซับซ้อน:** ระวังการเกิด *Overfitting* (เส้นพยายามผ่านทุกจุดจนทำนายอนาคตเพี้ยน)")
@@ -158,7 +157,7 @@ with st.expander("อธิบาย Polynomial Regression"):
         st.subheader("⚙️ ตั้งค่าข้อมูล")
         # ปรับปรุง input ให้รองรับข้อมูลที่สะท้อนความโค้ง
         actual_data_str = st.text_input("Actual Data (Yt) แยกด้วยเครื่องหมายคอมมา", "0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181")
-        forecast_steps = st.number_input("forecast_steps", 1, 10, 3)
+        dump_forecast_steps = st.number_input("forecast_steps", 1, 10, 3)
         
     st.divider()
 
@@ -170,19 +169,19 @@ with st.expander("อธิบาย Polynomial Regression"):
     y = np.array(Y_actual)
 
     # 2. สร้าง Features และ Fit Model
-    poly = PolynomialFeatures(degree=degree, include_bias=True)
+    poly = PolynomialFeatures(degree=dump_degree, include_bias=False)
     X_poly = poly.fit_transform(X)
     model = LinearRegression()
     model.fit(X_poly, y)
 
     # 3. สร้างข้อมูลสำหรับการแสดงผล (Historical + Forecast)
-    X_all = np.arange(n + forecast_steps).reshape(-1, 1)
+    X_all = np.arange(n + dump_forecast_steps).reshape(-1, 1)
     X_all_poly = poly.transform(X_all)
     y_all_pred = model.predict(X_all_poly)
 
     # เตรียม DataFrame สำหรับตาราง
     results = []
-    for t in range(n + forecast_steps):
+    for t in range(n + dump_forecast_steps):
         actual = Y_actual[t] if t < n else None
         pred = y_all_pred[t]
         
@@ -207,7 +206,7 @@ with st.expander("อธิบาย Polynomial Regression"):
         coeffs = model.coef_ # Note: b0 จะอยู่ใน intercept_ ถ้า include_bias=True ใน poly อาจต้องระวัง
         # เพื่อความชัดเจนในการสอน:
         eq_text = f"y = {model.intercept_:.2f}"
-        for i, c in enumerate(model.coef_[1:], 1):
+        for i, c in enumerate(model.coef_, 1):
             eq_text += f" + ({c:.4f} \cdot x^{i})"
         st.latex(eq_text)
         # R-squared
@@ -238,9 +237,10 @@ with st.sidebar:
         **Forecasting Method : Polynomial Regression:**
         """
     )
-    st.markdown(f"Details of processing (seconds/processing): {st.session_state['stored_step']}")
-    forecast_steps = st.slider("Forecasting Target (seconds)", 1, 600, 6)
-    degree = st.slider("Degree of Forecasting Equation", 1, 10, 2)
+    stored_step = st.session_state.get('stored_step')
+    st.markdown(f"Details of processing (seconds/processing): {stored_step}")
+    forecast_iterations = st.slider(f"Forecasting Target (step) n*{stored_step}", 1, 10, 1)
+    degree = st.slider("Degree of Forecasting Equation", MIN_DEGREE, MAX_DEGREE, 2)
     selected_cols = st.multiselect(
         "Variables to Forecast",
         FORECAST_COLUMNS,
@@ -252,60 +252,42 @@ with st.sidebar:
         st.stop()
 
 # Time axis
-actual_step = df.index[1] - df.index[0] if len(df) > 1 else 1
+actual_step = np.median(np.diff(df.index)) if len(df) > 1 else 1 # การันตี step size เท่ากันทุกแถว 
 # คำนวณจำนวนแถวที่ต้องพยากรณ์ (Number of iterations)
 # เช่น ถ้าอยากดูอนาคต 60 วินาที และข้อมูลห่างกันทีละ 10 วิ -> ต้องพยากรณ์ 6 แถว
-forecast_iterations = int(max(1, forecast_steps / actual_step))
 last_sec   = df.index[-1]
 future_idx = [last_sec + (i + 1) * actual_step for i in range(forecast_iterations)]
 full_idx   = list(df.index) + future_idx
 
 # ─── Run forecasts & plot ────────────────────────────────────────────────────
 metrics_rows = []
-forecast_dict = {"sec (forecast)": future_idx}
+# Create a dict to store forecasted values for the table
+forecast_dict = {"sec (forecast)": full_idx}
 
 for col in selected_cols:
-    series = df[col].dropna()
+    series = df[col] # การันตีไม่มี .dropna() ใน df
     if len(series) < 2:
-        st.warning(f"⚠️ {COLUMN_LABELS.get(col)}: ข้อมูลไม่เพียงพอสำหรับการพยากรณ์")
+        st.warning(f"⚠️ {COLUMN_LABELS.get(col, col)}: ข้อมูลไม่เพียงพอสำหรับการพยากรณ์")
         continue
 
-    # 1. พยากรณ์อนาคตของจริง (ใช้ข้อมูล 100% เต็ม)
-    fcast_vals, model_info = forecast_series(series, forecast_iterations, degree=degree)
+    # 1. พยากรณ์อนาคตของจริง (ใช้ข้อมูล 100% เต็ม) ตั้งแต่จุดเริ่มต้นจนถึงอนาคตที่ต้องการ (0-N) เพื่อให้เห็นแนวโน้มของเส้นโค้ง
+    full_forecast_values, forecast_values, model_info = forecast_series(series, forecast_iterations, degree=degree)
     # Store forecasted values in output dict for table
-    forecast_dict[COLUMN_LABELS.get(col)] = np.round(fcast_vals, 2)
+    forecast_dict[COLUMN_LABELS.get(col, col)] = np.round(full_forecast_values, 2)
 
-    # 2. ทำ Back-testing ด้วยข้อมูล 30% สุดท้าย เพื่อหา MAE, RMSE, MAPE
-    try:
-        # หาจุดตัด (Split Index) ที่ 70%
-        split_idx = int(len(series) * 0.7)
-        
-        train_series = series.iloc[:split_idx]
-        test_series = series.iloc[split_idx:]
-        test_steps = len(test_series)
-        
-        # ให้โมเดลเรียนรู้จากข้อมูล 70% แรก แล้วให้ลองพยากรณ์ไปข้างหน้าเท่ากับความยาวของช่วง 30%
-        bt_predicted, _ = forecast_series(train_series, test_steps, degree=degree)
-        
-        bt_actual = test_series.values
-        bt_predicted = np.array(bt_predicted)
-        
-        # ป้องกันกรณีเกิด Error จากความยาวของ Array ไม่เท่ากัน
-        if len(bt_actual) == len(bt_predicted):
-            mae, rmse, mape = compute_metrics(bt_actual, bt_predicted)
-        else:
-            mae, rmse, mape = float('nan'), float('nan'), float('nan')
-    except Exception as e:
-        mae, rmse, mape = float('nan'), float('nan'), float('nan')
-        
-    metrics_rows.append({
-        "Variable":  COLUMN_LABELS.get(col),
-        "Method":    "Polynomial Regression",
-        "MAE":     round(mae, 2),
-        "RMSE":    round(rmse, 2),
-        "MAPE (%)": round(mape, 2) if not np.isnan(mape) else "N/A",
-        "Model Info":   model_info,
-    })
+    # Confidence band (±2 std)
+    # 1. ดึงค่าพยากรณ์เฉพาะช่วงที่เป็นข้อมูลในอดีต (Historical)
+    hist_predicted = full_forecast_values[:len(series)]
+    
+    # 2. คำนวณ Residuals (ความคลาดเคลื่อน)
+    residuals = series.values - hist_predicted
+    
+    # 3. คำนวณ STD ของ Residuals
+    residual_std = np.std(residuals)
+    
+    # 4. สร้าง Upper / Lower Bound (±2 STD ของ Residuals)
+    upper = full_forecast_values + (2 * residual_std)
+    lower = full_forecast_values - (2 * residual_std)
 
     # ── Plotly chart ──────────────────────────────────────────────────────
     fig = go.Figure()
@@ -319,22 +301,19 @@ for col in selected_cols:
         marker=dict(size=7)
     ))
 
-    # Forecast
+    # Forecast 0-N (ลากผ่านทั้งอดีตและอนาคตเพื่อให้เห็น Regression Line)
     fig.add_trace(go.Scatter(
-        x=future_idx, y=fcast_vals,
+        # x=future_idx, y=fcast_vals,
+        x=full_idx, y=full_forecast_values, 
         mode='lines+markers',
         name='Forecast',
         line=dict(color='tomato', width=2, dash='dash'),
         marker=dict(size=7, symbol='diamond')
     ))
-
-    # Confidence band (±2 std)
-    hist_std = series.std()
-    upper = fcast_vals + 2 * hist_std
-    lower = fcast_vals - 2 * hist_std
+    
 
     fig.add_trace(go.Scatter(
-        x=future_idx + future_idx[::-1],
+        x=full_idx + full_idx[::-1],
         y=list(upper) + list(lower[::-1]),
         fill='toself',
         fillcolor='rgba(255,99,71,0.12)',
@@ -342,18 +321,72 @@ for col in selected_cols:
         name='95% CI',
         showlegend=True
     ))
-
     # Divider line
     fig.add_vline(x=last_sec, line_dash="dot", line_color="gray", annotation_text="Last Observed", annotation_position="top right")
 
     fig.update_layout(
-        title=f"{COLUMN_LABELS.get(col)}  |  Polynomial Regression",
+        title=f"{COLUMN_LABELS.get(col, col)}  |  Polynomial Regression",
         xaxis_title="Time (sec)",
-        yaxis_title=COLUMN_LABELS.get(col),
+        yaxis_title=COLUMN_LABELS.get(col, col),
         legend=dict(orientation="h", yanchor="bottom", y=1, xanchor="right", x=1),
         margin=dict(t=60, b=40),
     )
     st.plotly_chart(fig, width='stretch')
+
+   # 2. ทำ Back-testing ด้วยข้อมูล 30% สุดท้าย เพื่อหา MAE, RMSE, MAPE
+   
+# compare degree ที่ใช้ในการพยากรณ์กับจำนวนข้อมูลที่มี เพื่อป้องกัน Overfitting หรือ Underfitting
+    for d in range(MIN_DEGREE, MAX_DEGREE + 1):
+        try:
+            # หาจุดตัด (Split Index) ที่ 70%
+            split_idx = int(len(series) * 0.7)
+            
+            train_series = series.iloc[:split_idx]
+            test_series = series.iloc[split_idx:]
+            test_steps = len(test_series)
+            
+            full_preds, bt_predicted, model_info = forecast_series(train_series, test_steps, degree=d)
+            
+            bt_actual = test_series.values
+            
+            # เตรียมข้อมูลสำหรับหา Train R-squared
+            train_actual = train_series.values
+            train_predicted = full_preds[:len(train_actual)] # ดึงผลทำนายเฉพาะช่วงข้อมูล Train
+            
+            # ป้องกันกรณีเกิด Error จากความยาวของ Array ไม่เท่ากัน
+            if len(bt_actual) == len(bt_predicted):
+                mae, rmse, mape = compute_metrics(bt_actual, bt_predicted)
+                
+                # คำนวณ R-squared สำหรับ Train และ Test
+                train_r2 = r2_score(train_actual, train_predicted)
+                test_r2 = r2_score(bt_actual, bt_predicted)
+            else:
+                mae, rmse, mape = float('nan'), float('nan'), float('nan')
+                train_r2, test_r2 = float('nan'), float('nan')
+                
+        except Exception as e:
+            mae, rmse, mape = float('nan'), float('nan'), float('nan')
+            train_r2, test_r2 = float('nan'), float('nan')
+            model_info = "Error" # ป้องกัน Error กรณีที่ model_info ยังไม่ถูกสร้าง
+            
+        metrics_rows.append({
+            "Variable":  COLUMN_LABELS.get(col, "Unknown"), # แนะนำให้ใส่ default value ไว้เผื่อหาไม่เจอ
+            "MAE":       round(mae, 2) if not np.isnan(mae) else "N/A",
+            "RMSE":      round(rmse, 2) if not np.isnan(rmse) else "N/A",
+            "MAPE (%)":  round(mape, 2) if not np.isnan(mape) else "N/A",
+            "Train R-squared": round(train_r2, 4) if not np.isnan(train_r2) else "N/A",
+            "Test R-squared":  round(test_r2, 4) if not np.isnan(test_r2) else "N/A",
+            "Degree Used": d,
+            "Model Info": model_info
+
+        })
+
+# ─── Forecast Table ──────────────────────────────────────────────────────────
+st.divider()
+st.markdown("### 📋 Forecasted Table")
+forecast_out_df = pd.DataFrame(forecast_dict).set_index("sec (forecast)")
+st.dataframe(forecast_out_df, width='stretch')
+
 
 # ─── Metrics Table ───────────────────────────────────────────────────────────
 if metrics_rows:
@@ -361,13 +394,24 @@ if metrics_rows:
     st.markdown("### 📐 Forecast Accuracy Metrics \n"
         "- **MAE** (Mean Absolute Error)\n"
         "- **RMSE** (Root Mean Squared Error)\n"
-        "- **MAPE** (Mean Absolute Percentage Error)"
+        "- **MAPE** (Mean Absolute Percentage Error)\n"
+        "- **R²** (Coefficient of Determination)"
     )
-    metrics_df = pd.DataFrame(metrics_rows).set_index("Variable")
-    st.dataframe(metrics_df, width='stretch')
 
-# ─── Forecast Table ──────────────────────────────────────────────────────────
-st.divider()
-st.markdown("### 📋 Forecasted Table")
-forecast_out_df = pd.DataFrame(forecast_dict).set_index("sec (forecast)")
-st.dataframe(forecast_out_df, width='stretch')
+    with st.expander("📏 Forecast Accuracy Metrics"):
+        metrics_df = pd.DataFrame(metrics_rows).set_index("Variable")
+
+        # show sec ที่ใช้ใน train (70% ของข้อมูล)
+        # show sec ที่ใช้ใน test (30% ของข้อมูล)
+        total_len = len(df)
+        split_idx = int(total_len * 0.7)
+        train_sec_str = ", ".join(map(str, df.index[:split_idx]))
+        test_sec_str = ", ".join(map(str, df.index[split_idx:]))
+
+        st.markdown(f"**Train Seconds (70%):** {train_sec_str}")
+        st.markdown(f"**Test Seconds (30%):** {test_sec_str}")
+        
+        # split to multi table by "Degree Used" เพื่อให้ดูง่ายขึ้น
+        for degree_used in metrics_df["Degree Used"].unique():
+            st.markdown(f"Degree {degree_used}")
+            st.dataframe(metrics_df[metrics_df["Degree Used"] == degree_used], width='stretch')

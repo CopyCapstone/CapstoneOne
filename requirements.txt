@@ -7,4 +7,3 @@ colour-science
 scikit-image
 tensorflow
 plotly
-pmdarima
