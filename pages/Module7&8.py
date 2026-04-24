@@ -215,7 +215,7 @@ try:
                             'specular_avg_r': average_RGB_specular[0],
                             'specular_avg_g': average_RGB_specular[1],
                             'specular_avg_b': average_RGB_specular[2],
-                            'gloss_percent': gloss_percent,
+                            'gloss_percent': round(gloss_percent, 4),
                             'dE': dE_val # ใส่ค่าที่คำนวณได้ลงไป
                         }]
                         new_row_df = pd.DataFrame(new_row_data)
