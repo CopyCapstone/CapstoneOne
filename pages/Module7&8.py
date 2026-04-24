@@ -54,7 +54,8 @@ try:
         st.subheader("Current Parameters")
         st.json(config) # แสดงโครงสร้าง JSON ให้ดูแบบสวยงาม
         # defaults project process at 1 row per second but allow user to slow down to 1 row per 10 seconds
-        step =  st.slider("Details of processing (seconds/processing)", 1, 60, 1, help="Defaults project process at 1 processing per second but allow user to slow down to 1 processing per 60 seconds.")
+        stored_step = st.session_state.get('stored_step', 1)
+        step =  st.slider("Details of processing (seconds/processing)", 1, 60, stored_step, help="Defaults project process at 1 processing per second but allow user to slow down to 1 processing per 60 seconds.")
         # save step to storage for use in other modules
         st.session_state['stored_step'] = step
         st.divider()

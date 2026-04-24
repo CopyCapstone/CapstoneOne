@@ -189,9 +189,8 @@ try:
             **Forecasting Method : Polynomial Regression:**
             """
         )
-        stored_step = st.session_state.get('stored_step')
-        st.markdown(f"Details of processing (seconds/processing): {stored_step}")
-        forecast_iterations = st.slider(f"Forecasting Target (step) n*{stored_step}", 1, 10, 1)
+        st.markdown(f"Details of processing (seconds/processing): {np.median(np.diff(df.index))}")
+        forecast_iterations = st.slider(f"Forecasting Target (step) n*{np.median(np.diff(df.index))}", 1, 10, 1)
         degree = st.slider("Degree of Forecasting Equation", MIN_DEGREE, MAX_DEGREE, 2)
         selected_cols = st.multiselect(
             "Variables to Forecast",
