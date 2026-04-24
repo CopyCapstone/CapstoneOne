@@ -1,6 +1,5 @@
 import streamlit as st
 import cv2
-import os
 from Module_03_PixelSegmentation.kmeans import kmeans
 from Module_03_PixelSegmentation.gloss import detect_gloss
 import numpy as np
