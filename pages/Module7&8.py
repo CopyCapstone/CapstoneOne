@@ -24,7 +24,7 @@ def load_config():
     if os.path.exists(SETTING_FILE):
         with open(SETTING_FILE, 'r') as f:
             return json.load(f)
-    return {}
+    return None
 
 st.title("🔥 Module 7 & 8: Batch Processing and Data Aggregation")
 st.divider()
@@ -32,6 +32,9 @@ try:
 
     with st.sidebar:
         config = load_config()
+        if config is None:
+            st.info("Save settings at Color Measurement and Visualization first.")
+            st.stop()
         pad_x = float(config.get("pad_x", -0.1))
         pad_y = float(config.get("pad_y", -0.05))
         shrink_val = float(config.get("shrink", 0.2))

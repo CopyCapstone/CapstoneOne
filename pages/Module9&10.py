@@ -6,7 +6,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import r2_score
 import warnings
 from Module_9_Forecasting.forecast import forecast_series, compute_metrics
 warnings.filterwarnings("ignore")
