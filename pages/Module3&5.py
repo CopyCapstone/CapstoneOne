@@ -63,10 +63,8 @@ with st.sidebar:
             })
         )
         st.session_state.stored_iterations = st.session_state.input_iterations
-
-image_path = TMP_DIR / "CAT_frames" / f"CAT_frame_{st.session_state.stored_frame_num}.jpg"
-
-if os.path.exists(str(image_path)):
+try:
+    image_path = TMP_DIR / "CAT_frames" / f"CAT_frame_{st.session_state.stored_frame_num}.jpg"
     # โหลดภาพและประมวลผล
     data_raw = cv2.imread(str(image_path))
     h, w, _ = data_raw.shape 
@@ -161,5 +159,6 @@ if os.path.exists(str(image_path)):
             st.write(f"ค่าสี RGB ของพิกเซล Specular: {specular_pixels_rgb}")
         if len(diffuse_pixels_rgb) > 0:
             st.write(f"ค่าสี RGB ของพิกเซล Diffuse: {diffuse_pixels_rgb}")
-else:
-    st.error(f"ไม่พบไฟล์ภาพใน Path: {image_path}")
+except Exception as e:
+    # st.error(f"ERROR: {str(e)}")
+    st.switch_page("pages/Module2.py")

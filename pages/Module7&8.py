@@ -28,49 +28,45 @@ def load_config():
 
 st.title("🔥 Module 7 & 8: Batch Processing and Data Aggregation")
 st.divider()
-
-with st.sidebar:
-    config = load_config()
-    pad_x = float(config.get("pad_x", -0.1))
-    pad_y = float(config.get("pad_y", -0.05))
-    shrink_val = float(config.get("shrink", 0.2))
-    cat_method = str(config.get("cat_method", "custom"))
-    light_source = str(config.get("light_source", "D65"))
-    light_target = str(config.get("light_target", "D65"))
-    
-    val_lower = config.get("white_patch_lower")
-    white_patch_lower = int(val_lower) if val_lower is not None else 95
-    val_upper = config.get("white_patch_upper")
-    white_patch_upper = int(val_upper) if val_upper is not None else 99
-    
-    clustering_threshold = float(config.get("clustering_threshold", 0.20))
-    max_kmeans_iterations = int(config.get("max_kmeans_iterations", 1))
-
-    st.header("⚙️ System Settings")
-    st.subheader("Current Parameters")
-    st.json(config) # แสดงโครงสร้าง JSON ให้ดูแบบสวยงาม
-    # defaults project process at 1 row per second but allow user to slow down to 1 row per 10 seconds
-    step =  st.slider("Details of processing (seconds/processing)", 1, 60, 1, help="Defaults project process at 1 processing per second but allow user to slow down to 1 processing per 60 seconds.")
-    # save step to storage for use in other modules
-    st.session_state['stored_step'] = step
-    st.divider()
-    batchButton = st.button("GO❕❕❕", type="primary", width="stretch")
-
-# โหลดโมเดล
 try:
-    model = tf.keras.models.load_model('my_model.keras')
-except Exception as e:
-    st.error(f"Error loading or predicting: {e}") 
 
-if os.path.exists(str(VIDEO_PATH)):
-    st.write(f"✅ Video found: {str(VIDEO_PATH)}") 
-    # Show Video Player FIRST (so it's always visible)
-    try:
-        with open(str(VIDEO_PATH), "rb") as f:
-            st.video(f.read())
-    except Exception as e:
-        st.error(f"Error loading video player: {e}")
+    with st.sidebar:
+        config = load_config()
+        pad_x = float(config.get("pad_x", -0.1))
+        pad_y = float(config.get("pad_y", -0.05))
+        shrink_val = float(config.get("shrink", 0.2))
+        cat_method = str(config.get("cat_method", "custom"))
+        light_source = str(config.get("light_source", "D65"))
+        light_target = str(config.get("light_target", "D65"))
         
+        val_lower = config.get("white_patch_lower")
+        white_patch_lower = int(val_lower) if val_lower is not None else 95
+        val_upper = config.get("white_patch_upper")
+        white_patch_upper = int(val_upper) if val_upper is not None else 99
+        
+        clustering_threshold = float(config.get("clustering_threshold", 0.20))
+        max_kmeans_iterations = int(config.get("max_kmeans_iterations", 1))
+
+        st.header("⚙️ System Settings")
+        st.subheader("Current Parameters")
+        st.json(config) # แสดงโครงสร้าง JSON ให้ดูแบบสวยงาม
+        # defaults project process at 1 row per second but allow user to slow down to 1 row per 10 seconds
+        step =  st.slider("Details of processing (seconds/processing)", 1, 60, 1, help="Defaults project process at 1 processing per second but allow user to slow down to 1 processing per 60 seconds.")
+        # save step to storage for use in other modules
+        st.session_state['stored_step'] = step
+        st.divider()
+        batchButton = st.button("GO❕❕❕", type="primary", width="stretch")
+
+    # โหลดโมเดล
+    try:
+        model = tf.keras.models.load_model('my_model.keras')
+    except Exception as e:
+        st.error(f"Error loading or predicting: {e}") 
+
+    # Show Video Player FIRST (so it's always visible)
+    with open(str(VIDEO_PATH), "rb") as f:
+        st.video(f.read())
+    st.write(f"✅ Video found: {str(VIDEO_PATH)}") 
     # Loop through the range of frames you want to display
     if batchButton:
         data = pd.DataFrame()
@@ -232,9 +228,9 @@ if os.path.exists(str(VIDEO_PATH)):
             data.to_csv(str(OUTPUT_CSV_PATH), index=False)         
             cap.release()
             
-else:
-    st.info("👈 Please start at Module1 to begin.")
-    
+except Exception as e:
+    # st.error(f"ERROR: {str(e)}")    
+    st.switch_page("pages/Module4&6.py")
     
 
 

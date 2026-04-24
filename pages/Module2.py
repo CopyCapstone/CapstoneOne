@@ -91,7 +91,7 @@ def sidebar_controls():
         )
         
 # --- Main Application Execution ---
-def main():
+try:
     st.title("😼 Module 2: Chromatic Adaptation Transform")
     st.divider()
     init_session_state()
@@ -102,10 +102,6 @@ def main():
     full_path = TMP_DIR / "video_frames" / f"frame_{frame_num}.jpg"
     save_dir = TMP_DIR / "CAT_frames"
     save_dir.mkdir(parents=True, exist_ok=True)
-    # ดึงค่า Setting อาจได้ใช้ 
-    if not full_path.exists():
-        st.warning(f"⚠️ No source frame found for Frame {frame_num}. Please process Module 1 first.")
-        return
     with st.spinner("✨ Applying Color Adaptation..."):
         # รัน CAT โดยเลือกวิธีการตามที่ผู้ใช้กำหนด
         method = st.session_state.stored_cat_method
@@ -160,6 +156,6 @@ def main():
                 st.write(f"Custom CAT: {st.session_state.stored_light_source} to {st.session_state.stored_light_target}")
             if st.session_state.stored_cat_method == "white_patch":
                 st.write(f"White Patch Percentile Setting: Lower={st.session_state.stored_lower}%, Upper={st.session_state.stored_upper}%")
-
-if __name__ == "__main__":
-    main()
+except Exception as e:
+    # st.error(f"ERROR: {str(e)}")
+    st.switch_page("pages/Module1.py")

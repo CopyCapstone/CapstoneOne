@@ -24,10 +24,8 @@ init_session_state()
 
 st.title("🤖 Module 4 & 6: Color Measurement and Visualization")
 st.divider()
-
-image_path = TMP_DIR / "glossReplaced_frames" / f"GlossReplaced_frame_{st.session_state.stored_frame_num}.jpg"
-
-if os.path.exists(str(image_path)):
+try:
+    image_path = TMP_DIR / "glossReplaced_frames" / f"GlossReplaced_frame_{st.session_state.stored_frame_num}.jpg"
     col1, col2 = st.columns([0.5, 0.5])
     with col1:
         # โหลดภาพและประมวลผล
@@ -105,5 +103,6 @@ if os.path.exists(str(image_path)):
             except Exception as e:
                 st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
                 
-else:
-    st.error(f"ไม่พบไฟล์ภาพใน Path: {image_path}")
+except Exception as e:
+    # st.error(f"ERROR: {str(e)}")    
+    st.switch_page("pages/Module3&5.py")

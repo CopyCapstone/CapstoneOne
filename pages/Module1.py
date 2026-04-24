@@ -115,39 +115,36 @@ if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     cap = get_video_capture(st.session_state.video_path)
     cap.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.stored_frame_num)
     success, frame_bgr = cap.read()  
-    if success:
-        col1, col2 = st.columns([0.7, 0.3])
-        with col1:
-            st.markdown(f"### 🖼️ Original Frame {st.session_state.stored_frame_num}")
-            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-            st.image(frame_rgb, width='stretch')
+    col1, col2 = st.columns([0.7, 0.3])
+    with col1:
+        st.markdown(f"### 🖼️ Original Frame {st.session_state.stored_frame_num}")
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        st.image(frame_rgb, width='stretch')
+        # --- Debug Section (Optional) ---
+        debug_dir = TMP_DIR / "video_frames"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        debug_path = debug_dir / f"frame_{st.session_state.stored_frame_num}.jpg"
+        cv2.imwrite(str(debug_path), frame_bgr)
+    with col2:
+        st.markdown(f"### 🎯 Detected Frame {st.session_state.stored_frame_num}")
+        pad_x = st.session_state.get("stored_pad_x", -0.1)
+        pad_y = st.session_state.get("stored_pad_y", -0.05)
+        shrink_val = st.session_state.get("stored_shrink", 0.2)
+        cropped_result = detect_rotate_crop(frame_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
+        if cropped_result is not None:
+            result_rgb = cv2.cvtColor(cropped_result, cv2.COLOR_BGR2RGB)
+            st.image(result_rgb, width='stretch')
             # --- Debug Section (Optional) ---
-            debug_dir = TMP_DIR / "video_frames"
+            debug_dir = TMP_DIR / "cropped_frames"
             debug_dir.mkdir(parents=True, exist_ok=True)
-            debug_path = debug_dir / f"frame_{st.session_state.stored_frame_num}.jpg"
-            cv2.imwrite(str(debug_path), frame_bgr)
-        with col2:
-            st.markdown(f"### 🎯 Detected Frame {st.session_state.stored_frame_num}")
-            pad_x = st.session_state.get("stored_pad_x", -0.1)
-            pad_y = st.session_state.get("stored_pad_y", -0.05)
-            shrink_val = st.session_state.get("stored_shrink", 0.2)
-            cropped_result = detect_rotate_crop(frame_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
-            if cropped_result is not None:
-                result_rgb = cv2.cvtColor(cropped_result, cv2.COLOR_BGR2RGB)
-                st.image(result_rgb, width='stretch')
-                # --- Debug Section (Optional) ---
-                debug_dir = TMP_DIR / "cropped_frames"
-                debug_dir.mkdir(parents=True, exist_ok=True)
-                debug_path = debug_dir / f"cropped_frame_{st.session_state.stored_frame_num}.jpg"
-                cv2.imwrite(str(debug_path), cropped_result)
-            else:
-                st.warning("No object detected in this frame.")
-        with st.expander("ℹ️ Settings Details"):
-            st.write(f"Processing Frame: {st.session_state.stored_frame_num}")
-            st.write(f"Object Detection Pad_x: {st.session_state.stored_pad_x}")
-            st.write(f"Object Detection Pad_y: {st.session_state.stored_pad_y}")
-            st.write(f"Object Detection Shrink: {st.session_state.stored_shrink}")
-    else:
-        st.error("Failed to read the selected frame.")
+            debug_path = debug_dir / f"cropped_frame_{st.session_state.stored_frame_num}.jpg"
+            cv2.imwrite(str(debug_path), cropped_result)
+        else:
+            st.warning("No object detected in this frame.")
+    with st.expander("ℹ️ Settings Details"):
+        st.write(f"Processing Frame: {st.session_state.stored_frame_num}")
+        st.write(f"Object Detection Pad_x: {st.session_state.stored_pad_x}")
+        st.write(f"Object Detection Pad_y: {st.session_state.stored_pad_y}")
+        st.write(f"Object Detection Shrink: {st.session_state.stored_shrink}")
 else:
     st.info("👈 Please upload a video from the sidebar to begin.")
