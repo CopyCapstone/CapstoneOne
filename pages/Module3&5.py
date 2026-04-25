@@ -159,5 +159,5 @@ try:
         if len(diffuse_pixels_rgb) > 0:
             st.write(f"ค่าสี RGB ของพิกเซล Diffuse: {diffuse_pixels_rgb}")
 except Exception as e:
-    # st.error(f"ERROR: {str(e)}")
-    st.switch_page("pages/Module2.py")
+    st.error(f"ERROR: {str(e)}")
+    # st.switch_page("pages/Module2.py")

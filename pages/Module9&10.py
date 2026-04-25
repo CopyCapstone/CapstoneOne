@@ -366,5 +366,5 @@ try:
                 st.markdown(f"Degree {degree_used}")
                 st.dataframe(metrics_df[metrics_df["Degree Used"] == degree_used], width='stretch')  
 except Exception as e:
-    # st.error(f"ERROR: {str(e)}")
-    st.switch_page("pages/Module7&8.py")
+    st.error(f"ERROR: {str(e)}")
+    # st.switch_page("pages/Module7&8.py")

@@ -233,8 +233,8 @@ try:
             cap.release()
             
 except Exception as e:
-    # st.error(f"ERROR: {str(e)}")    
-    st.switch_page("pages/Module4&6.py")
+    st.error(f"ERROR: {str(e)}")    
+    # st.switch_page("pages/Module4&6.py")
     
 
 

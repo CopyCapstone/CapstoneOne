@@ -103,5 +103,5 @@ try:
                 st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
                 
 except Exception as e:
-    # st.error(f"ERROR: {str(e)}")    
-    st.switch_page("pages/Module3&5.py")
+    st.error(f"ERROR: {str(e)}")    
+    # st.switch_page("pages/Module3&5.py")

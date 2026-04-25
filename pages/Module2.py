@@ -157,5 +157,5 @@ try:
             if st.session_state.stored_cat_method == "white_patch":
                 st.write(f"White Patch Percentile Setting: Lower={st.session_state.stored_lower}%, Upper={st.session_state.stored_upper}%")
 except Exception as e:
-    # st.error(f"ERROR: {str(e)}")
-    st.switch_page("pages/Module1.py")
+    st.error(f"ERROR: {str(e)}")
+    # st.switch_page("pages/Module1.py")
