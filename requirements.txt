@@ -1,9 +1,9 @@
 opencv-python
 streamlit
-numpy
+numpy==1.26.4
 ultralytics
 scikit-learn
 colour-science
 scikit-image
-tensorflow
+tensorflow-cpu
 plotly

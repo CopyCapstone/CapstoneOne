@@ -1,0 +1,6 @@
+video/
+tmp/
+CV/__pycache__/
+.venv
+*.pyc
+train_model/
