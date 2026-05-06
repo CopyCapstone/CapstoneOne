@@ -305,17 +305,17 @@ try:
                 
                 # ป้องกันกรณีเกิด Error จากความยาวของ Array ไม่เท่ากัน
                 if len(bt_actual) == len(bt_predicted):
-                    mae, rmse, mape = compute_metrics(bt_actual, bt_predicted)
+                    mae, rmse, mape, r_rmse = compute_metrics(bt_actual, bt_predicted)
                     
                     # คำนวณ R-squared สำหรับ Train และ Test
                     train_r2 = r2_score(train_actual, train_predicted)
                     test_r2 = r2_score(bt_actual, bt_predicted)
                 else:
-                    mae, rmse, mape = float('nan'), float('nan'), float('nan')
+                    mae, rmse, mape, r_rmse = float('nan'), float('nan'), float('nan'), float('nan')
                     train_r2, test_r2 = float('nan'), float('nan')
                     
             except Exception as e:
-                mae, rmse, mape = float('nan'), float('nan'), float('nan')
+                mae, rmse, mape, r_rmse = float('nan'), float('nan'), float('nan'), float('nan')
                 train_r2, test_r2 = float('nan'), float('nan')
                 model_info = "Error" # ป้องกัน Error กรณีที่ model_info ยังไม่ถูกสร้าง
                 
@@ -324,6 +324,7 @@ try:
                 "MAE":       round(mae, 2) if not np.isnan(mae) else "N/A",
                 "RMSE":      round(rmse, 2) if not np.isnan(rmse) else "N/A",
                 "MAPE (%)":  round(mape, 2) if not np.isnan(mape) else "N/A",
+                "RRMSE":     round(r_rmse, 4) if not np.isnan(r_rmse) else "N/A",
                 "Train R-squared": round(train_r2, 4) if not np.isnan(train_r2) else "N/A",
                 "Test R-squared":  round(test_r2, 4) if not np.isnan(test_r2) else "N/A",
                 "Degree Used": d,
@@ -345,6 +346,7 @@ try:
             "- **MAE** (Mean Absolute Error)\n"
             "- **RMSE** (Root Mean Squared Error)\n"
             "- **MAPE** (Mean Absolute Percentage Error)\n"
+            "- **RRMSE** (Relative Root Mean Squared Error)\n"
             "- **R²** (Coefficient of Determination)"
         )
 

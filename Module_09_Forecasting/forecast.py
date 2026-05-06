@@ -50,4 +50,9 @@ def compute_metrics(actual, predicted):
     rmse = np.sqrt(mean_squared_error(actual, predicted))
     mask = np.abs(actual) > 1e-8
     mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if mask.any() else float('nan')
-    return mae, rmse, mape
+    
+    # RRMSE calculation: RMSE / Mean of Actuals
+    mean_actual = np.mean(actual)
+    r_rmse = (rmse / mean_actual) if np.abs(mean_actual) > 1e-8 else float('nan')
+    
+    return mae, rmse, mape, r_rmse
