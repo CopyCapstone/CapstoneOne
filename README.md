@@ -5,7 +5,7 @@ This repository contains a Computer Vision-based Web Application designed for th
 - Automated Object Detection: Utilizes YOLOv8 to automatically locate and isolate target objects (such as copper or brass samples) within a video frame.  
 - Chromatic Adaptation: Implements a Chromatic Adaptation Transform (CAT) to normalize captured color data to the standard D65 illuminant, ensuring consistency across varying lighting conditions.  
 - Color & Gloss Segmentation: Employs K-means clustering to bifurcate pixels into diffuse (intrinsic color) and specular (gloss) components.  
-- CIELAB Color Estimation: Converts RGB data to the device-independent CIELAB L*a*b* color space using a Neural Network regression model for high accuracy.  
+- CIELAB Color Estimation: Converts RGB data to the device-independent CIELAB *L*\**a*\**b*\* color space using a Neural Network regression model for high accuracy.  
 - Predictive Forecasting: Features a Polynomial Regression model to forecast future color degradation and tarnish trends based on historical time-series data.
 
 ## Installation
