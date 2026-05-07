@@ -24,6 +24,7 @@ This method uses a Python virtual environment to manage dependencies locally.
    python -m venv .venv
    ```
 2. Activate the environment:
+   
    Windows:
    ```
    .venv\Scripts\activate
@@ -32,7 +33,7 @@ This method uses a Python virtual environment to manage dependencies locally.
    ```
    source .venv/bin/activate
    ```
-3. Install required libraries:
+4. Install required libraries:
    ```
    pip install -r requirements.txt
    ```
