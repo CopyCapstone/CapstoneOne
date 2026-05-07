@@ -18,6 +18,7 @@ cd CapstoneOne
 ```
 ### 2. Choose Installation Option
 Option 1: Local Environment (Requires Python 3.11)
+
 This method uses a Python virtual environment to manage dependencies locally.
 1. Create a virtual environment:
    ```
@@ -42,6 +43,7 @@ This method uses a Python virtual environment to manage dependencies locally.
    streamlit run main.py
    ```
 Option 2: Docker (Recommended for Portability)
+
 This project supports deployment via Docker to prevent dependency conflicts and ensure environment consistency.  
 
 1. Build the Docker image:
@@ -49,6 +51,7 @@ This project supports deployment via Docker to prevent dependency conflicts and 
    docker build -t my-streamlit-app .
    ```
 2. Run the container:
+   
    Map the default Streamlit port (8501) to your local machine:
    ```
    docker run -p 8501:8501 my-streamlit-app
