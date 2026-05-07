@@ -56,3 +56,6 @@ This project supports deployment via Docker to prevent dependency conflicts and 
    ```
    docker run -p 8501:8501 my-streamlit-app
    ```
+
+## Demo
+https://youtu.be/6i89FbV4k70
