@@ -6,7 +6,7 @@ from ultralytics import YOLO
 
 # base directory ของ module นี้
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "models", "yoloTag.pt")
+MODEL_PATH = os.path.join(BASE_DIR, "yoloTag.pt")
 model = YOLO(MODEL_PATH)
 
 # ใส่ภาพที่ต้องการตรวจจับและครอบวัตถุ

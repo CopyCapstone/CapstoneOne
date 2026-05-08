@@ -112,8 +112,8 @@ def extract_all_frames(input_folder, output_folder):
 # ==========================================
 # กำหนด Path ของโฟลเดอร์ตรงนี้
 # ==========================================
-input_directory = r"C:\Users\Worapol\Lecture\Capstone Project\MyAI\VDO"  # ใส่ path โฟลเดอร์ที่มีวิดีโอ 63 ไฟล์
-output_directory = r"C:\Users\Worapol\Lecture\Capstone Project\MyAI\FRAME" # ใส่ path โฟลเดอร์ที่จะให้สร้างโฟลเดอร์ย่อย
+input_directory = r"VDO"  # ใส่ path โฟลเดอร์ที่มีวิดีโอ 63 ไฟล์
+output_directory = r"FRAME" # ใส่ path โฟลเดอร์ที่จะให้สร้างโฟลเดอร์ย่อย
 
 # เรียกใช้งานฟังก์ชัน
 extract_one_frame_per_sec(input_directory, output_directory)
