@@ -1,4 +1,5 @@
 import os
+import tempfile
 import cv2
 import json
 import numpy as np
@@ -13,10 +14,10 @@ from Module_07_BatchProcessing.kmeans_batch import kmeans
 from Module_07_BatchProcessing.process_cat_logic_batch import process_cat_logic
 
 # --- Configuration & Paths ---
-PROJECT_ROOT = Path(__file__).parent.parent
-TMP_DIR = PROJECT_ROOT / "tmp"
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
 SETTING_FILE = TMP_DIR / 'settings.json'
-VIDEO_PATH = TMP_DIR/ "uploaded_video" / "uploaded_video.mp4"
+# VIDEO_PATH = TMP_DIR/ "uploaded_video" / "uploaded_video.mp4"
+VIDEO_PATH = st.session_state.video_path
 OUTPUT_CSV_PATH = TMP_DIR / "dataframe" / "batch_processing_results.csv"
 os.makedirs(OUTPUT_CSV_PATH.parent, exist_ok=True)
 

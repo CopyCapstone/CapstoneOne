@@ -1,3 +1,4 @@
+import tempfile
 import tensorflow as tf
 import streamlit as st
 import cv2
@@ -6,8 +7,7 @@ from Module_04_ColorMeasurement.prepare_input import prepare_input
 import json
 
 # --- Configuration & Constants ---
-PROJECT_ROOT = Path(__file__).parent.parent
-TMP_DIR = PROJECT_ROOT / "tmp"
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
 SETTING_FILE = TMP_DIR / 'settings.json'
 
 # --- Initialize session state ---

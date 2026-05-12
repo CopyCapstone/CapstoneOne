@@ -1,3 +1,6 @@
+import shutil
+import tempfile
+import uuid
 import streamlit as st
 import cv2
 import os
@@ -5,14 +8,17 @@ from pathlib import Path
 from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
 
 # --- Configuration & Paths ---
-PROJECT_ROOT = Path(__file__).parent.parent
-TMP_DIR = PROJECT_ROOT / "tmp"
+if "unique_id" not in st.session_state:
+    st.session_state.unique_id = uuid.uuid4().hex
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
 
 # --- Save Temp Video functions ---
 def save_temp_video(uploaded_file):
-    video_dir = TMP_DIR / "uploaded_video"
+    # สร้าง Path ใหม่ที่แยกตาม ID ของ User
+    video_dir = TMP_DIR / "uploaded_video" 
     video_dir.mkdir(parents=True, exist_ok=True)
-    file_path = video_dir / "uploaded_video.mp4"
+    # แนะนำให้ใช้ชื่อไฟล์เดิมของ User เพื่อความไม่งง หรือตั้งชื่อกลางก็ได้
+    file_path = video_dir / uploaded_file.name
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     return str(file_path)
@@ -62,9 +68,21 @@ with st.sidebar:
     st.header("📽️ Video Input")
     uploaded_video = st.file_uploader("Upload a video", type=["mp4", "mov", "avi"], help="Supported Formats: MP4, MOV, AVI (Max 200 MB)")
     if uploaded_video:
-        # Clear caches for the new video
-        get_video_capture.clear()
+        # 1. จัดการไฟล์เก่า
+        if st.session_state.video_path:
+            old_dir = os.path.dirname(st.session_state.video_path)
+            if os.path.exists(old_dir):
+                try:
+                    shutil.rmtree(old_dir)
+                except Exception:
+                    pass 
+
+        # 2. ล้าง Cache (เช็คก่อนว่าฟังก์ชันมี attribute clear ไหม)
+        if hasattr(get_video_capture, "clear"):
+            get_video_capture.clear()
         get_video_info.clear()
+
+        # 3. บันทึกไฟล์ใหม่
         new_video_path = save_temp_video(uploaded_video)
         # Check if this is a NEW video
         if new_video_path != st.session_state.video_path:
@@ -114,7 +132,8 @@ with st.sidebar:
 if st.session_state.video_path and os.path.exists(st.session_state.video_path):
     cap = get_video_capture(st.session_state.video_path)
     cap.set(cv2.CAP_PROP_POS_FRAMES, st.session_state.stored_frame_num)
-    success, frame_bgr = cap.read()  
+    success, frame_bgr = cap.read()
+    cap.release()  
     col1, col2 = st.columns([0.7, 0.3])
     with col1:
         st.markdown(f"### 🖼️ Original Frame {st.session_state.stored_frame_num}")

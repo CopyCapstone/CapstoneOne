@@ -1,3 +1,4 @@
+import tempfile
 import streamlit as st
 import cv2
 import numpy as np
@@ -10,8 +11,7 @@ from Module_02_ChromaticAdaptationTransform.cat import chromatic_adaptation_tran
 from Module_02_ChromaticAdaptationTransform.custom_CAT import custom_CAT
 
 # --- Configuration & Constants ---
-PROJECT_ROOT = Path(__file__).parent.parent
-TMP_DIR = PROJECT_ROOT / "tmp"
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
 ILLUMINANTS_xy = CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']
 
 # --- Helper Functions (Logic) ---

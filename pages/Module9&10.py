@@ -1,4 +1,5 @@
 import os
+import tempfile
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -12,10 +13,8 @@ from Module_09_Forecasting.forecast import forecast_series, compute_metrics
 warnings.filterwarnings("ignore")
 
 # --- Configuration & Paths ---
-PROJECT_ROOT = Path(__file__).parent.parent
-TMP_DIR = PROJECT_ROOT / "tmp"
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
 SETTING_FILE = TMP_DIR / 'settings.json'
-VIDEO_PATH = TMP_DIR / "uploaded_video" / "uploaded_video.mp4"
 DATA_CSV_PATH = TMP_DIR / "dataframe" / "batch_processing_results.csv"
 FORECAST_OUTPUT_CSV_PATH = TMP_DIR / "dataframe" / "forecast_results.csv"
 MIN_DEGREE, MAX_DEGREE = 1, 5

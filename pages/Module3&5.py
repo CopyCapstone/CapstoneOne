@@ -1,3 +1,4 @@
+import tempfile
 import streamlit as st
 import cv2
 from Module_03_PixelSegmentation.kmeans import kmeans
@@ -6,8 +7,7 @@ import numpy as np
 from pathlib import Path
 
 # --- Configuration & Constants ---
-PROJECT_ROOT = Path(__file__).parent.parent
-TMP_DIR = PROJECT_ROOT / "tmp"
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
 
 # ฟังก์ชันช่วยสร้างกล่องสี HTML
 def create_color_box(rgb):
