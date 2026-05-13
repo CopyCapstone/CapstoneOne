@@ -8,9 +8,9 @@ from pathlib import Path
 from Module_01_ObjectDetection.detect_rotate_crop import detect_rotate_crop
 
 # --- Configuration & Paths ---
-if "unique_id" not in st.session_state:
-    st.session_state.unique_id = uuid.uuid4().hex
-TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
+if "stored_unique_id" not in st.session_state:
+    st.session_state.stored_unique_id = uuid.uuid4().hex
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.stored_unique_id
 
 # --- Save Temp Video functions ---
 def save_temp_video(uploaded_file):

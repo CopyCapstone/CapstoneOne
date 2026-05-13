@@ -7,7 +7,7 @@ from Module_04_ColorMeasurement.prepare_input import prepare_input
 import json
 
 # --- Configuration & Constants ---
-TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.stored_unique_id
 SETTING_FILE = TMP_DIR / 'settings.json'
 
 # --- Initialize session state ---

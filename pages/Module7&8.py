@@ -14,7 +14,7 @@ from Module_07_BatchProcessing.kmeans_batch import kmeans
 from Module_07_BatchProcessing.process_cat_logic_batch import process_cat_logic
 
 # --- Configuration & Paths ---
-TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.stored_unique_id
 SETTING_FILE = TMP_DIR / 'settings.json'
 # VIDEO_PATH = TMP_DIR/ "uploaded_video" / "uploaded_video.mp4"
 VIDEO_PATH = st.session_state.video_path

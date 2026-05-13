@@ -13,7 +13,7 @@ from Module_09_Forecasting.forecast import forecast_series, compute_metrics
 warnings.filterwarnings("ignore")
 
 # --- Configuration & Paths ---
-TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.stored_unique_id
 SETTING_FILE = TMP_DIR / 'settings.json'
 DATA_CSV_PATH = TMP_DIR / "dataframe" / "batch_processing_results.csv"
 FORECAST_OUTPUT_CSV_PATH = TMP_DIR / "dataframe" / "forecast_results.csv"

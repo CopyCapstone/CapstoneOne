@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 
 # --- Configuration & Constants ---
-TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.unique_id
+TMP_DIR = Path(tempfile.gettempdir()) / "tmp" / st.session_state.stored_unique_id
 
 # ฟังก์ชันช่วยสร้างกล่องสี HTML
 def create_color_box(rgb):
