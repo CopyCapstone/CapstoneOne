@@ -105,6 +105,7 @@ try:
             table_placeholder = st.empty()
             
             ref_L, ref_a, ref_b = None, None, None
+            processingCompleted_placeholder = st.empty()
             for sec in range(total_seconds+1):
                 if sec % step != 0:
                     continue  # ข้ามการประมวลผลถ้าวินาทีนี้ไม่ใช่ช่วงที่กำหนดไว้ใน slider
@@ -120,19 +121,22 @@ try:
 
                         # ประมวลผล Image
                         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-                        cropped_bgr = detect_rotate_crop(frame_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
-                        cropped_rgb = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2RGB)
-                        if cat_method == "custom":
-                            cat_bgr = process_cat_logic(cropped_bgr, cat_method,None,None,light_source,light_target)        
-                        else:
-                            processed_full_bgr = process_cat_logic(frame_bgr, cat_method,white_patch_lower,white_patch_upper,None,None)            
-                            if processed_full_bgr is not None:
+                        if cat_method == "custom": # crop -> cat
+                            cropped_bgr = detect_rotate_crop(frame_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
+                            if cropped_bgr is None:
+                                processingCompleted_placeholder.warning(f"⚠️ Warning: No object detected at second {sec} (Frame {frame_id}). Skipping this frame.")
+                                continue
+                            cat_bgr = process_cat_logic(cropped_bgr, cat_method,None,None,light_source,light_target)
+                        else: # cat -> crop
+                            pre_cat_full_bgr = process_cat_logic(frame_bgr, cat_method,white_patch_lower,white_patch_upper,None,None)            
+                            if pre_cat_full_bgr is not None:
                             # ทำ Object Detection (Crop) 
-                                cat_bgr = detect_rotate_crop(processed_full_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
-                            # ตรวจสอบกรณี Detect ไม่เจอ
+                                cropped_bgr = detect_rotate_crop(pre_cat_full_bgr, pad_x_pct=pad_x, pad_y_pct=pad_y, shrink=shrink_val)
+                                cat_bgr = cropped_bgr.copy() if cropped_bgr is not None else None
                             if cat_bgr is None:
-                                st.error("🎯 Detection failed on processed image. Show full frame instead.")
-                                cat_bgr = processed_full_bgr
+                                processingCompleted_placeholder.warning(f"⚠️ Warning: No object detected at second {sec} (Frame {frame_id}). Skipping this frame.")
+                                continue
+                        cropped_rgb = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2RGB)
                         cat_rgb = cv2.cvtColor(cat_bgr, cv2.COLOR_BGR2RGB)
                         # รัน K-means และค้นหา Gloss
                         centroids, labels = kmeans(cat_bgr, clustering_threshold, max_kmeans_iterations)
@@ -191,8 +195,8 @@ try:
                         replaced_img_placeholder.image(replaced_img_rgb, caption=f"replaced_specular_image")  
 
 
-                        # --- ส่วนที่เพิ่มใหม่: คำนวณ dE เทียบกับ sec 0 ---
-                        if sec == 0:
+                        # --- ส่วนที่เพิ่มใหม่: คำนวณ dE เทียบกับเฟรมแรกที่จับวัตถุได้ ---
+                        if ref_L is None and ref_a is None and ref_b is None:
                             # เก็บค่าของวินาทีที่ 0 เป็นค่าอ้างอิง
                             ref_L, ref_a, ref_b = pred_L, pred_a, pred_b
                             dE_val = 0.0
@@ -229,7 +233,7 @@ try:
                 else:
                     break
 
-            st.sidebar.success("✅ Processing completed!")   
+            processingCompleted_placeholder.success("✅ Processing completed!")   
             data.to_csv(str(OUTPUT_CSV_PATH), index=False)         
             cap.release()
             
