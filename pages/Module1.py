@@ -23,7 +23,6 @@ def save_temp_video(uploaded_file):
         f.write(uploaded_file.getbuffer())
     return str(file_path)
 
-@st.cache_resource
 def get_video_capture(video_path):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -77,9 +76,7 @@ with st.sidebar:
                 except Exception:
                     pass 
 
-        # 2. ล้าง Cache (เช็คก่อนว่าฟังก์ชันมี attribute clear ไหม)
-        if hasattr(get_video_capture, "clear"):
-            get_video_capture.clear()
+        # 2. ล้าง Cache 
         get_video_info.clear()
 
         # 3. บันทึกไฟล์ใหม่
