@@ -1,14 +1,15 @@
 import cv2
 import argparse
 import numpy as np
-from kmeans import kmeans
+from .kmeans import kmeans
 from gloss import detect_gloss
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument("image_path")
-parser.add_argument("-t", "--threshold", default=0.2, required=False)
-parser.add_argument("-i", "--iterations", default=1, required=False)
+parser.add_argument("-t", "--threshold", default=0.2, type=float, required=False)
+parser.add_argument("-i", "--iterations", default=1, type=int, required=False)
+parser.add_argument("-l", "--light", nargs=3, default=[255, 255, 255], type=int, required=False)
 
 args = parser.parse_args()
 image = args.image_path
